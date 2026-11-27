@@ -1,0 +1,35 @@
+name: Deploy API to Vercel
+
+# Runs only when a VERCEL_TOKEN secret exists (create one at https://vercel.com/account/tokens).
+on:
+  push:
+    branches: [main]
+    paths: ["apps/api/**", "packages/shared/**", "db/migrations/**", ".github/workflows/deploy-api.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.VERCEL_TOKEN != ''
+      - uses: actions/setup-node@v4
+        if: env.VERCEL_TOKEN != ''
+        with:
+          node-version: 22
+      - name: Deploy
+        if: env.VERCEL_TOKEN != ''
+        run: |
+          npm ci
+          npm run build -w @bwl/api
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" --cwd apps/api/deploy
+      - name: Skipped
+        if: env.VERCEL_TOKEN == ''
+        run: echo "No VERCEL_TOKEN secret set — skipping API deploy."

@@ -11,7 +11,7 @@ export default tseslint.config(
       "**/coverage/**",
       "apps/kid-android/**",
       "**/.vercel/**",
-      "apps/api/api/**",
+      "apps/api/deploy/**",
       "build/**",
     ],
   },

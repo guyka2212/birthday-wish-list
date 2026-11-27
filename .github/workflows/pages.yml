@@ -1,0 +1,52 @@
+name: Deploy websites to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/web-guest/**", "apps/web-shop/**", "packages/shared/**", ".github/workflows/pages.yml", "package-lock.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build guest shop (site root) and shop portal (/shop/)
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          BASE_PATH="/$REPO/" npm run build -w @bwl/web-guest
+          BASE_PATH="/$REPO/shop/" npm run build -w @bwl/web-shop
+          mkdir -p site
+          cp -r apps/web-guest/dist/. site/
+          mkdir -p site/shop
+          cp -r apps/web-shop/dist/. site/shop/
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
