@@ -1,0 +1,8 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "api", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "-w", "@bwl/api"], "port": 4000 },
+    { "name": "web-guest", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "-w", "@bwl/web-guest"], "port": 5173 },
+    { "name": "web-shop", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "-w", "@bwl/web-shop"], "port": 5174 }
+  ]
+}

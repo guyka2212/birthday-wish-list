@@ -1,0 +1,77 @@
+@import "tailwindcss";
+@import "@fontsource/rubik/400.css";
+@import "@fontsource/rubik/500.css";
+@import "@fontsource/rubik/700.css";
+@import "@fontsource/rubik/800.css";
+
+/* Design tokens (match the kid app). Theme colors are swapped at runtime via CSS variables. */
+@theme {
+  --font-sans: "Rubik", "Heebo", system-ui, sans-serif;
+  --color-sky: #3fa9f5;
+  --color-sky-deep: #1c7fd1;
+  --color-sky-soft: #e3f2ff;
+  --color-sun: #ffc93c;
+  --color-ink: #1d2b4f;
+  --color-ink-soft: #5b6a8a;
+  --color-mint: #2bc48a;
+  --color-candy: #ff6fb5;
+  --color-danger: #e5484d;
+  --color-t-primary: var(--t-primary);
+  --color-t-accent: var(--t-accent);
+  --color-t-bg: var(--t-bg);
+  --color-t-text: var(--t-text);
+  --color-t-on-primary: var(--t-on-primary);
+  --color-t-on-accent: var(--t-on-accent);
+  --color-t-card: var(--t-card);
+  --radius-card: 1.5rem;
+}
+
+:root {
+  --t-primary: #3fa9f5;
+  --t-accent: #ffc93c;
+  --t-bg: #f2f8ff;
+  --t-text: #1d2b4f;
+  --t-on-primary: #fff;
+  --t-on-accent: #1d2b4f;
+  --t-card: #ffffff;
+}
+
+html,
+body {
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(6deg); }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+@keyframes pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-pop { animation: pop 0.35s ease-out both; }
+
+.btn-press { transition: transform 0.12s ease; }
+.btn-press:active { transform: scale(0.95); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-pop { animation: none; }
+  .btn-press:active { transform: none; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  html, body { background: #fff !important; color: #000 !important; }
+  .print-card { box-shadow: none !important; border: 1px solid #ccc; }
+}
