@@ -24,8 +24,8 @@ dependencies {
 }
 
 // Release builds talk to the deployed API (override with -Pbwl.apiUrl=https://... or BWL_API_URL env).
-val releaseApiUrl: String = (findProperty("bwl.apiUrl") as String?)
-    ?: System.getenv("BWL_API_URL")
+val releaseApiUrl: String = (findProperty("bwl.apiUrl") as String?)?.takeIf { it.isNotBlank() }
+    ?: System.getenv("BWL_API_URL")?.takeIf { it.isNotBlank() }
     ?: "https://birthday-wish-list-api.vercel.app"
 
 android {
