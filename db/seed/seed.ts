@@ -139,6 +139,7 @@ const signup = await call<{ accessToken: string }>("POST", "/auth/kid/signup", {
   parentEmail: demo.DEMO_PARENT_EMAIL,
   birthday: "2016-" + nextMonth.slice(5),
   avatar: "🦄",
+  city: "haifa",
 });
 const token = signup.accessToken;
 

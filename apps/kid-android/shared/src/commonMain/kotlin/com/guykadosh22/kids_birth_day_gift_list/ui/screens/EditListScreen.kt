@@ -253,7 +253,7 @@ private fun FilterSheet(current: CatalogFilter, shops: List<ShopFilterItem>, onA
         Text(s.filterByShops, style = MaterialTheme.typography.titleLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
             shops.forEach { shop ->
-                Chip(shop.name, shop.id in f.shopIds, onClick = {
+                Chip(shop.name + (shop.distanceKm?.let { " · " + s.kmAway(it) } ?: ""), shop.id in f.shopIds, onClick = {
                     f = f.copy(shopIds = if (shop.id in f.shopIds) f.shopIds - shop.id else f.shopIds + shop.id)
                 }, leading = "🏪")
             }

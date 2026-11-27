@@ -1,5 +1,7 @@
 import { Hono } from "hono";
-import { loginSchema, refreshSchema, shopDecisionSchema, type AdminShopRow, type OutboxRow } from "@bwl/shared";
+import { z } from "zod";
+import { loginSchema, refreshSchema, shopDecisionSchema, TEMPLATE_KEYS, TEMPLATE_PLACEHOLDERS, templateUpdateSchema, type AdminShopRow, type OutboxRow } from "@bwl/shared";
+import { getTemplate, listTemplates, renderTemplate, SAMPLE_VARS } from "../services/emailTemplates";
 import type { AppEnv } from "../context";
 import { all, one, run } from "../db";
 import { audit } from "../lib/audit";
@@ -7,7 +9,7 @@ import { issueTokens, requireAuth, revokeRefresh, rotateRefresh } from "../lib/a
 import { notFound, unauthorized } from "../lib/errors";
 import { dummyVerify, verifyPassword } from "../lib/passwords";
 import { enforce, ipHash } from "../lib/rateLimit";
-import { body } from "../lib/validate";
+import { body, parse } from "../lib/validate";
 import { notify } from "../services/notify";
 import { shopDecisionEmail } from "../email/templates";
 
@@ -96,6 +98,26 @@ admin.get("/outbox", async (c) => {
   );
   const items: OutboxRow[] = rows.map((r) => ({ id: r.id, toHint: r.to_hint, subject: r.subject, kind: r.kind, provider: r.provider, status: r.status, createdAt: Number(r.created_at), html: r.html }));
   return c.json({ items });
+});
+
+// ---- email templates the shops send to buyers ("set aside" / "not in stock") ----
+admin.get("/templates", async (c) => c.json({ items: await listTemplates(c.var.deps.db), placeholders: TEMPLATE_PLACEHOLDERS }));
+
+admin.put("/templates/:key", async (c) => {
+  const { db, now } = c.var.deps;
+  const key = parse(z.enum(TEMPLATE_KEYS), c.req.param("key"));
+  const input = await body(c, templateUpdateSchema);
+  const ts = now();
+  await run(db, "UPDATE email_templates SET subject = ?, body = ?, updated_at = ?, updated_by = ? WHERE key = ?", [input.subject, input.body, ts, c.var.subjectId, key]);
+  await audit(db, { actorType: "admin", actorId: c.var.subjectId, action: "template.update", targetType: "email_template", targetId: key }, ts);
+  return c.json(await getTemplate(db, key));
+});
+
+/** Preview a (possibly unsaved) template with sample order data. */
+admin.post("/templates/preview", async (c) => {
+  const input = await body(c, templateUpdateSchema);
+  const r = renderTemplate(input, SAMPLE_VARS);
+  return c.json({ subject: r.subject, html: r.html });
 });
 
 admin.get("/stats", async (c) => {

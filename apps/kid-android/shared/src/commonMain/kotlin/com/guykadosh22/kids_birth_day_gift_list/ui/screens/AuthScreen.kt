@@ -41,6 +41,7 @@ import com.guykadosh22.kids_birth_day_gift_list.LocalPlatform
 import com.guykadosh22.kids_birth_day_gift_list.ui.AuthViewModel
 import com.guykadosh22.kids_birth_day_gift_list.ui.SessionViewModel
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.PhotoPicker
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.CityPicker
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -78,6 +79,7 @@ fun AuthScreen(repo: Repository, language: String, session: SessionViewModel, on
     var firstName by rememberSaveable { mutableStateOf("") }
     var parentEmail by rememberSaveable { mutableStateOf("") }
     var birthday by rememberSaveable { mutableStateOf("") }
+    var city by rememberSaveable { mutableStateOf("") }
     var avatar by rememberSaveable { mutableStateOf(Avatars.first()) }
     var photo by remember { mutableStateOf<ByteArray?>(null) }
     val platform = LocalPlatform.current
@@ -142,6 +144,7 @@ fun AuthScreen(repo: Repository, language: String, session: SessionViewModel, on
                         }
                         if (m == Mode.Signup) {
                             DateField(birthday, { birthday = it }, s.birthday)
+                            CityPicker(repo, city, { city = it }, error = if (tried && city.isBlank()) s.cityRequired else null)
                             BwlTextField(
                                 parentEmail, { parentEmail = it.trim() }, s.parentEmail, keyboardType = KeyboardType.Email,
                                 supporting = s.parentEmailHint,
@@ -169,12 +172,12 @@ fun AuthScreen(repo: Repository, language: String, session: SessionViewModel, on
                                     Mode.Login -> if (emailRegex.matches(email) && password.isNotEmpty()) vm.login(email, password, onLoggedIn)
                                     Mode.Forgot -> if (emailRegex.matches(email)) vm.forgot(email, s.forgotSent)
                                     Mode.Signup -> if (emailRegex.matches(email) && validPassword(password) && emailRegex.matches(parentEmail) &&
-                                        firstName.isNotBlank() && username.trim().length >= 2
+                                        firstName.isNotBlank() && username.trim().length >= 2 && city.isNotBlank()
                                     ) {
                                         vm.signup(
                                             SignupRequest(
                                                 username = username.trim(), firstName = firstName.trim(), email = email, password = password,
-                                                parentEmail = parentEmail, birthday = birthday.ifBlank { null }, avatar = avatar, locale = language,
+                                                parentEmail = parentEmail, birthday = birthday.ifBlank { null }, avatar = avatar, locale = language, city = city,
                                             ),
                                             afterSignup,
                                         )

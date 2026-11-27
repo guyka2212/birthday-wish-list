@@ -24,6 +24,8 @@ export interface KidProfile {
   consentStatus: "pending" | "verified";
   /** a profile photo was uploaded (fetch it from GET /kid/me/photo) */
   hasPhoto: boolean;
+  /** city id (see CITIES) or null if not set yet */
+  city: string | null;
 }
 
 export interface ShopSummary {
@@ -32,6 +34,8 @@ export interface ShopSummary {
   city: string;
   logoUrl: string | null;
   brandColor: string;
+  /** distance from the kid's city, when known */
+  distanceKm?: number | null;
 }
 
 export interface CatalogProduct {
@@ -207,6 +211,17 @@ export interface ShopOrder {
   deliveryMethod: "pickup" | "delivery";
   deliveryAddress: string | null;
   items: Array<{ title: string; sku: string; priceAgorot: number; quantity: number }>;
+  declineReason: string | null;
+  respondedAt: number | null;
+  buyerNotifiedAt: number | null;
+  buyerNotifiedCount: number;
+}
+
+export interface EmailTemplate {
+  key: "set_aside" | "unavailable";
+  subject: string;
+  body: string;
+  updatedAt: number;
 }
 
 export interface ShopDashboard {

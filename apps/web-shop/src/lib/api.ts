@@ -1,6 +1,7 @@
 import type {
   AdminShopRow,
   AuthTokens,
+  EmailTemplate,
   OutboxRow,
   ShopDashboard,
   ShopOrder,
@@ -122,6 +123,9 @@ export const shopApi = {
   deleteProduct: (id: string) => call("shop", `/shop/products/${id}`, { method: "DELETE" }),
   orders: (status?: string) => call<{ items: ShopOrder[] }>("shop", `/shop/orders${status ? `?status=${status}` : ""}`).then((r) => r.items),
   setOrderStatus: (id: string, status: string) => call<ShopOrder>("shop", `/shop/orders/${id}`, { method: "PATCH", ...body({ status }) }),
+  answerStock: (id: string, inStock: boolean) => call<ShopOrder>("shop", `/shop/orders/${id}/stock`, { method: "POST", ...body({ inStock }) }),
+  emailPreview: (id: string) => call<{ template: string; subject: string; text: string }>("shop", `/shop/orders/${id}/email-preview`),
+  notifyBuyer: (id: string) => call<ShopOrder>("shop", `/shop/orders/${id}/notify-buyer`, { method: "POST" }),
   rotateKey: () => call<{ apiKey: string; prefix: string }>("shop", "/shop/api-key/rotate", { method: "POST" }),
 };
 
@@ -131,6 +135,9 @@ export const adminApi = {
   decide: (id: string, decision: "approve" | "reject" | "suspend") => call("admin", `/admin/shops/${id}/decision`, { method: "POST", ...body({ decision }) }),
   outbox: () => call<{ items: OutboxRow[] }>("admin", "/admin/outbox").then((r) => r.items),
   stats: () => call<Record<string, number>>("admin", "/admin/stats"),
+  templates: () => call<{ items: EmailTemplate[]; placeholders: string[] }>("admin", "/admin/templates"),
+  saveTemplate: (key: string, t: { subject: string; body: string }) => call<EmailTemplate>("admin", `/admin/templates/${key}`, { method: "PUT", ...body(t) }),
+  previewTemplate: (t: { subject: string; body: string }) => call<{ subject: string; html: string }>("admin", "/admin/templates/preview", { method: "POST", ...body(t) }),
 };
 
 export const openApi = () => call<Record<string, unknown>>(null, "/openapi.json");

@@ -135,6 +135,13 @@ data class Strings(
     val quizDone: String,
     val quizNeeded: String,
     val yourTheme: String,
+    // location
+    val city: String,
+    val cityHint: String,
+    val searchCity: String,
+    val cityRequired: String,
+    val kmAway: (Int) -> String,
+    val addCityTitle: String,
 )
 
 val HebrewStrings = Strings(
@@ -176,6 +183,8 @@ val HebrewStrings = Strings(
     takePhoto = "לצלם עכשיו", fromGallery = "מהגלריה", removePhoto = "להסיר תמונה", orCharacter = "או לבחור דמות", photoUploadFailed = "לא הצלחנו לשמור את התמונה, אפשר לנסות שוב בפרופיל",
     quizTitle = "בונים את החנות שלך! 🎨", quizSubtitle = "עונים על 6 שאלות קטנות ואנחנו ניצור לחנות המתנות עיצוב שהוא רק שלך", quizStart = "להתחיל את החידון ✨",
     quizStep = { i, n -> "שאלה $i מתוך $n" }, quizBack = "חזרה", quizRedo = "לענות שוב", quizDone = "החנות שלך מוכנה!", quizNeeded = "צריך לענות על החידון כדי ליצור את העיצוב", yourTheme = "העיצוב שלך",
+    city = "באיזו עיר את/ה גר/ה?", cityHint = "נראה לך רק חנויות שקרובות אלייך", searchCity = "חיפוש עיר", cityRequired = "צריך לבחור עיר",
+    kmAway = { if (it < 1) "בעיר שלך" else "$it ק״מ ממך" }, addCityTitle = "📍 בחרו עיר בפרופיל כדי לראות חנויות קרובות",
 )
 
 val EnglishStrings = Strings(
@@ -217,6 +226,8 @@ val EnglishStrings = Strings(
     takePhoto = "Take a photo", fromGallery = "From gallery", removePhoto = "Remove photo", orCharacter = "or pick a character", photoUploadFailed = "We couldn't save your photo — try again in Profile",
     quizTitle = "Let's build your shop! 🎨", quizSubtitle = "Answer 6 quick questions and we'll create a gift-shop theme that's only yours", quizStart = "Start the quiz ✨",
     quizStep = { i, n -> "Question $i of $n" }, quizBack = "Back", quizRedo = "Answer again", quizDone = "Your shop is ready!", quizNeeded = "Answer the quiz to create your theme", yourTheme = "Your theme",
+    city = "Which city do you live in?", cityHint = "We'll only show shops near you", searchCity = "Search city", cityRequired = "Please choose a city",
+    kmAway = { if (it < 1) "In your city" else "$it km away" }, addCityTitle = "📍 Choose your city in Profile to see nearby shops",
 )
 
 val CategoryEmoji = mapOf("toys" to "🧸", "books" to "📚", "lego" to "🧱", "sports" to "⚽", "art" to "🎨", "games" to "🎲", "other" to "🎁")

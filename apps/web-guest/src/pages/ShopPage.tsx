@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CATEGORY_LABELS, formatILS, type PublicList, type PublicListItem } from "@bwl/shared";
+import { CATEGORY_LABELS, CITIES, cityDistanceKm, findCity, formatILS, type PublicList, type PublicListItem } from "@bwl/shared";
 import { api, ApiError, guestSession } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useTheme } from "../lib/theme";
@@ -16,6 +16,24 @@ export default function ShopPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // The buyer's city stays in this browser only (never sent to the server); it's used to show the closest shops.
+  const [buyerCity, setBuyerCity] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("bwl-buyer-city");
+    } catch {
+      return null;
+    }
+  });
+  const [askCity, setAskCity] = useState(() => !buyerCity);
+  const chooseCity = (id: string | null) => {
+    setBuyerCity(id);
+    setAskCity(false);
+    try {
+      if (id) localStorage.setItem("bwl-buyer-city", id);
+    } catch {
+      /* storage blocked */
+    }
+  };
   const theme = useTheme(state.kind === "ready" ? (state.list.theme ?? state.list.themeId) : "unicorn");
 
   const load = useCallback(
@@ -86,6 +104,16 @@ export default function ShopPage() {
   }
 
   const list = state.list;
+  const dist = (i: PublicListItem) => (buyerCity ? cityDistanceKm(buyerCity, i.product.shop.city) : null);
+  // nearest shops first (bought gifts last); remember the closest available one for the badge
+  const items = [...list.items].sort((a, b) => {
+    const pa = a.state === "purchased" ? 1 : 0;
+    const pb = b.state === "purchased" ? 1 : 0;
+    if (pa !== pb) return pa - pb;
+    return (dist(a) ?? 1e9) - (dist(b) ?? 1e9);
+  });
+  const available = items.filter((i) => i.state !== "purchased" && i.product.inStock && dist(i) != null);
+  const closestKm = available.length ? Math.min(...available.map((i) => dist(i)!)) : null;
   return (
     <div className="min-h-dvh pb-32">
       {/* themed header */}
@@ -120,14 +148,24 @@ export default function ShopPage() {
       </header>
 
       <main className="mx-auto -mt-6 max-w-6xl px-4">
+        <CityBar city={buyerCity} open={askCity} onOpen={() => setAskCity(true)} onChoose={chooseCity} onSkip={() => setAskCity(false)} />
         {list.items.length === 0 ? (
           <div className="rounded-card bg-t-card p-6">
             <Message emoji="🎈" title={t.emptyList} />
           </div>
         ) : (
           <ul className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {list.items.map((item, i) => (
-              <ProductCard key={item.id} item={item} index={i} busy={busyItem === item.id} onBuy={() => buy(item)} onOpenCart={() => setCartOpen(true)} />
+            {items.map((item, i) => (
+              <ProductCard
+                key={item.id}
+                item={item}
+                index={i}
+                busy={busyItem === item.id}
+                km={dist(item)}
+                closest={closestKm != null && dist(item) === closestKm && item.state !== "purchased" && item.product.inStock}
+                onBuy={() => buy(item)}
+                onOpenCart={() => setCartOpen(true)}
+              />
             ))}
           </ul>
         )}
@@ -156,7 +194,44 @@ export default function ShopPage() {
   );
 }
 
-function ProductCard({ item, index, busy, onBuy, onOpenCart }: { item: PublicListItem; index: number; busy: boolean; onBuy: () => void; onOpenCart: () => void }) {
+function CityBar({ city, open, onOpen, onChoose, onSkip }: { city: string | null; open: boolean; onOpen: () => void; onChoose: (id: string | null) => void; onSkip: () => void }) {
+  const { t, lang } = useI18n();
+  const c = findCity(city);
+  if (!open) {
+    return c ? (
+      <div className="relative z-10 mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-t-card px-4 py-3 shadow-lg shadow-black/10">
+        <span className="font-bold">📍 {lang === "he" ? c.he : c.en}</span>
+        <button onClick={onOpen} className="text-sm font-bold underline">{t.changeCity}</button>
+      </div>
+    ) : (
+      <div className="relative z-10 mb-4 flex justify-end">
+        <button onClick={onOpen} className="btn-press rounded-full bg-t-card px-4 py-2 text-sm font-bold shadow">📍 {t.whereFrom}</button>
+      </div>
+    );
+  }
+  return (
+    <div className="animate-pop relative z-10 mb-6 rounded-card bg-t-card p-5 shadow-xl shadow-black/10">
+      <h2 className="text-xl font-extrabold">{t.whereFrom}</h2>
+      <p className="mb-3 text-sm opacity-80">{t.whereFromBody}</p>
+      <div className="flex flex-wrap gap-2">
+        <select
+          className={`${inputClass} max-w-xs`}
+          defaultValue={city ?? ""}
+          aria-label={t.cityPlaceholder}
+          onChange={(e) => e.target.value && onChoose(e.target.value)}
+        >
+          <option value="" disabled>{t.cityPlaceholder}</option>
+          {[...CITIES].sort((a, b) => (lang === "he" ? a.he.localeCompare(b.he, "he") : a.en.localeCompare(b.en))).map((x) => (
+            <option key={x.id} value={x.id}>{lang === "he" ? x.he : x.en}</option>
+          ))}
+        </select>
+        <Button variant="soft" onClick={onSkip}>{t.skip}</Button>
+      </div>
+    </div>
+  );
+}
+
+function ProductCard({ item, index, busy, km, closest, onBuy, onOpenCart }: { item: PublicListItem; index: number; busy: boolean; km: number | null; closest: boolean; onBuy: () => void; onOpenCart: () => void }) {
   const { t, lang } = useI18n();
   const p = item.product;
   const unavailable = item.state === "purchased" || item.state === "held" || !p.inStock;
@@ -182,6 +257,8 @@ function ProductCard({ item, index, busy, onBuy, onOpenCart }: { item: PublicLis
       <div className="flex flex-1 flex-col gap-1 p-4">
         <h3 className="text-lg font-bold leading-snug">{p.title}</h3>
         <p className="text-sm opacity-75">{t.shopBy(p.shop.name, p.shop.city)}</p>
+        {km != null && <p className="text-sm font-bold">📍 {t.kmFromYou(km)}</p>}
+        {closest && <span className="w-fit rounded-full bg-t-accent px-3 py-1 text-xs font-extrabold text-t-on-accent">{t.closest}</span>}
         <p className="mt-auto pt-2 text-2xl font-extrabold">{formatILS(p.priceAgorot, lang)}</p>
         {item.state === "held_by_you" ? (
           <Button variant="primary" onClick={onOpenCart}>
@@ -346,6 +423,7 @@ function CartDrawer({
                   <input className={inputClass} autoComplete="street-address" value={form.deliveryAddress} maxLength={200} onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })} />
                 </Field>
               )}
+              <p className="rounded-2xl bg-sun/25 px-4 py-3 text-sm font-bold">🏪 {t.requestNote}</p>
               <p className="rounded-2xl bg-mint/15 px-4 py-3 text-sm font-bold">💳 {t.mockPayment}</p>
               {serverError && (
                 <p role="alert" className="rounded-2xl bg-danger/10 px-4 py-3 font-bold text-danger">

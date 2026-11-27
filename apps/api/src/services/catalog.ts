@@ -95,14 +95,15 @@ export async function searchCatalog(db: Executor, f: CatalogFilter) {
   return rows.map(toCatalogProduct);
 }
 
-export async function trending(db: Executor, limit = 10) {
+export async function trending(db: Executor, limit = 10, shopIds?: string[]) {
+  const shopFilter = shopIds ? `AND sh.id IN (${placeholders(Math.max(shopIds.length, 1))})` : "";
   const rows = await all<ProductRow>(
     db,
     `SELECT ${PRODUCT_COLS}, (SELECT COUNT(*) FROM list_items li WHERE li.product_id = p.id) AS popularity
      ${PRODUCT_JOIN}
-     WHERE sh.status = 'approved' AND p.active = 1 AND COALESCE(s.quantity,0) > 0
+     WHERE sh.status = 'approved' AND p.active = 1 AND COALESCE(s.quantity,0) > 0 ${shopFilter}
      ORDER BY popularity DESC, p.updated_at DESC LIMIT ?`,
-    [limit],
+    [...(shopIds ? (shopIds.length ? shopIds : [""]) : []), limit],
   );
   return rows.map(toCatalogProduct);
 }

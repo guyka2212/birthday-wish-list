@@ -21,7 +21,7 @@ import { ApiError, conflict, notFound, unauthorized } from "../lib/errors";
 import { enforce, ipHash } from "../lib/rateLimit";
 import { body, parse } from "../lib/validate";
 import { daysUntil, resolveTheme } from "../services/lists";
-import { GIFT_BOUGHT, notify, sendWebhook } from "../services/notify";
+import { notify, sendWebhook } from "../services/notify";
 import { buildReceipt } from "../services/receipts";
 import { orderNewEmail, receiptEmail } from "../email/templates";
 
@@ -267,8 +267,8 @@ pub.post("/checkout", async (c) => {
       await run(
         t,
         `INSERT INTO receipts (id, number, list_id, kid_first_name, buyer_name, buyer_email_enc, greeting, delivery_method, delivery_address_enc,
-                               subtotal_agorot, vat_agorot, total_agorot, vat_rate_bp, access_token_hash, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                               subtotal_agorot, vat_agorot, total_agorot, vat_rate_bp, access_token_hash, access_token_enc, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           receiptId,
           receiptNumber,
@@ -284,6 +284,7 @@ pub.post("/checkout", async (c) => {
           total,
           VAT_RATE_BP,
           await sha256Hex(accessToken),
+          await box.encrypt(accessToken), // lets the shop's email include the receipt link
           ts,
         ],
       );
@@ -328,7 +329,7 @@ pub.post("/checkout", async (c) => {
         total,
         ts,
       ]);
-      await notify(t, { recipientType: "kid", recipientId: list.user_id, ...GIFT_BOUGHT, refId: list.list_id }, ts);
+      // The kid is told "someone bought you a gift" only once the shop confirms it's in stock (see shop stock check).
       await audit(t, { actorType: "guest", action: "checkout.complete", targetType: "receipt", targetId: receiptId, meta: { items: lines.length, total }, ipHash: await ipHash(c) }, ts);
     });
   } catch (e) {

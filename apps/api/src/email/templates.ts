@@ -1,9 +1,9 @@
 import { formatILS, type ReceiptView } from "@bwl/shared";
 
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
-function layout(title: string, body: string) {
+export function layout(title: string, body: string) {
   return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)}</title></head>
 <body style="margin:0;background:#F2F8FF;font-family:Rubik,Heebo,Arial,sans-serif;color:#1D2B4F">
 <div style="max-width:560px;margin:0 auto;padding:24px">
@@ -58,7 +58,7 @@ export function receiptEmail(r: ReceiptView, billUrl: string) {
     html: layout(
       "קבלה",
       `<h2 style="margin-top:0">תודה ${esc(r.buyerName)}! 🎉</h2>
-<p>המתנה ל<b>${esc(r.kidFirstName)}</b> נקנתה בהצלחה. הנה עותק של הקבלה:</p>
+<p>ההזמנה של המתנה ל<b>${esc(r.kidFirstName)}</b> התקבלה! 🛍️ שלחנו אותה לחנות כדי לבדוק שהיא במלאי ולשמור אותה בצד בשבילך — החנות תעדכן אותך במייל.</p><p>הנה עותק של הקבלה:</p>
 <p><b>מספר הזמנה:</b> ${esc(r.number)}<br><b>תאריך:</b> ${new Date(r.createdAt).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}</p>
 <table style="width:100%;border-collapse:collapse;font-size:15px">${rows}
 <tr><td colspan="2"><hr style="border:none;border-top:1px solid #E3ECF7"></td></tr>

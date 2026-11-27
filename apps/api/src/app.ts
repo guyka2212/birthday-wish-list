@@ -12,7 +12,7 @@ import { shop, shopAuth } from "./routes/shop";
 import { shopApi } from "./routes/shopApi";
 import { admin, adminAuth } from "./routes/admin";
 import { openApiSpec } from "./openapi";
-import { THEMES } from "@bwl/shared";
+import { CITIES, THEMES } from "@bwl/shared";
 
 export function createApp(deps: Deps) {
   const app = new Hono<AppEnv>();
@@ -58,6 +58,8 @@ export function createApp(deps: Deps) {
   });
   app.get("/openapi.json", (c) => c.json(openApiSpec(deps.config.API_PUBLIC_URL)));
   app.get("/themes", (c) => c.json({ items: Object.values(THEMES) }));
+  // public: the cities a kid can pick at sign-up (no coordinates needed by clients)
+  app.get("/cities", (c) => c.json({ items: CITIES.map(({ id, he, en }) => ({ id, he, en })) }));
 
   app.route("/auth/kid", kidAuth);
   app.route("/auth/shop", shopAuth);

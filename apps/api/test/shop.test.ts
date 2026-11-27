@@ -83,7 +83,7 @@ describe("shop portal and stock API", () => {
     expect(bySku.TEDDY.stock).toBe(42);
 
     // kids see the new stock immediately
-    const kid = await ctx.call("POST", "/auth/kid/signup", { username: "kid1", firstName: "Kid", email: "k1@example.com", password: "secret123", parentEmail: "p@example.com" });
+    const kid = await ctx.call("POST", "/auth/kid/signup", { username: "kid1", firstName: "Kid", email: "k1@example.com", password: "secret123", parentEmail: "p@example.com", city: "haifa" });
     const cat = await ctx.call("GET", "/kid/catalog?q=Kite", undefined, { token: kid.json.accessToken });
     expect(cat.json.items[0].inStock).toBe(false);
 
@@ -110,8 +110,8 @@ describe("shop portal and stock API", () => {
     expect(o.items[0].sku).toBe("TEDDY");
 
     expect((await ctx.call("PATCH", `/shop/orders/${o.id}`, { status: "done" }, { token })).status).toBe(400);
-    expect((await ctx.call("PATCH", `/shop/orders/${o.id}`, { status: "preparing" }, { token })).json.status).toBe("preparing");
-    expect((await ctx.call("PATCH", `/shop/orders/${o.id}`, { status: "ready" }, { token })).json.status).toBe("ready");
+    // new orders are answered with the stock check
+    expect((await ctx.call("POST", `/shop/orders/${o.id}/stock`, { inStock: true }, { token })).json.status).toBe("ready");
     expect((await ctx.call("PATCH", `/shop/orders/${o.id}`, { status: "done" }, { token })).json.status).toBe("done");
 
     const dash = await ctx.call("GET", "/shop/dashboard", undefined, { token });

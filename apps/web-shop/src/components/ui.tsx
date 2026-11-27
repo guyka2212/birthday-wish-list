@@ -93,9 +93,9 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
 }
 
 export const STATUS_LABEL: Record<string, string> = {
-  new: "חדשה",
+  new: "ממתינה לבדיקת מלאי",
   preparing: "בהכנה",
-  ready: "מוכנה לאיסוף",
+  ready: "שמורה בצד ללקוח",
   shipped: "נשלחה",
   done: "הושלמה",
   cancelled: "בוטלה",

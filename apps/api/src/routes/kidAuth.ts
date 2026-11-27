@@ -35,8 +35,8 @@ kidAuth.post("/signup", async (c) => {
   await tx(db, async (t) => {
     await run(
       t,
-      `INSERT INTO users (id, username, first_name, email_enc, email_hash, password_hash, birthday, avatar, locale, consent_status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO users (id, username, first_name, email_enc, email_hash, password_hash, birthday, avatar, locale, consent_status, city_enc, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         userId,
         input.username,
@@ -48,6 +48,7 @@ kidAuth.post("/signup", async (c) => {
         input.avatar ?? "🦄",
         input.locale ?? "he",
         autoVerify ? "verified" : "pending",
+        await box.encrypt(input.city),
         ts,
         ts,
       ],

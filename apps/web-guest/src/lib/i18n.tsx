@@ -58,7 +58,7 @@ const he = {
   downloadPdf: "הורדת PDF",
   emailSent: (e: string) => `עותק נשלח למייל ${e}`,
   invalidReceipt: "הקישור לקבלה לא תקף.",
-  orderStatus: { new: "התקבלה", preparing: "בהכנה", ready: "מוכנה לאיסוף", shipped: "נשלחה", done: "הושלמה", cancelled: "בוטלה" } as Record<string, string>,
+  orderStatus: { new: "⏳ החנות בודקת מלאי", preparing: "בהכנה", ready: "✓ שמורה בצד בשבילך", shipped: "נשלחה", done: "הושלמה", cancelled: "לא במלאי — הכסף הוחזר" } as Record<string, string>,
   landingTitle: "רשימת משאלות ליום הולדת",
   landingBody: "קיבלתם קישור לרשימה? פתחו אותו כדי לבחור מתנה. ילדים יוצרים רשימות באפליקציה, וחנויות מצטרפות דרך פורטל החנויות.",
   forShops: "לחנויות",
@@ -71,6 +71,16 @@ const he = {
   invalidEmail: "כתובת מייל לא תקינה",
   conflictTaken: "אוי! מישהו אחר קונה את המתנה הזאת ממש עכשיו.",
   language: "English",
+  whereFrom: "מאיפה את/ה? 📍",
+  whereFromBody: "נראה לך כמה כל חנות קרובה אלייך ונסדר את המתנות מהקרובה לרחוקה. העיר נשמרת רק בדפדפן שלך.",
+  cityPlaceholder: "בחרו עיר",
+  kmFromYou: (km: number) => (km < 1 ? "באותה עיר שלך" : `${km} ק״מ ממך`),
+  closest: "⭐ הכי קרוב אלייך",
+  changeCity: "שינוי עיר",
+  skip: "אחר כך",
+  requestNote: "לחיצה על תשלום שולחת לחנות בקשה לבדוק שהמתנה במלאי ולשמור אותה בצד בשבילך. החנות תעדכן אותך במייל, ואם אין במלאי — הכסף יוחזר.",
+  thanksPending: "ההזמנה נשלחה לחנות! 🎉",
+  thanksPendingBody: "החנות בודקת שהמתנה במלאי ותשמור אותה בצד בשבילך. נשלח לך מייל ברגע שהיא מאשרת.",
 };
 
 export type Dict = typeof he;
@@ -131,7 +141,7 @@ const en: Dict = {
   downloadPdf: "Download PDF",
   emailSent: (e) => `A copy was emailed to ${e}`,
   invalidReceipt: "This receipt link is not valid.",
-  orderStatus: { new: "Received", preparing: "Preparing", ready: "Ready for pickup", shipped: "Shipped", done: "Completed", cancelled: "Cancelled" },
+  orderStatus: { new: "⏳ Shop is checking stock", preparing: "Preparing", ready: "✓ Set aside for you", shipped: "Shipped", done: "Completed", cancelled: "Not in stock — refunded" },
   landingTitle: "Birthday Wish List",
   landingBody: "Got a link to a list? Open it to pick a gift. Kids create lists in the app, and shops join through the shop portal.",
   forShops: "For shops",
@@ -144,6 +154,16 @@ const en: Dict = {
   invalidEmail: "Invalid email",
   conflictTaken: "Oh! Someone else is buying this gift right now.",
   language: "עברית",
+  whereFrom: "Where are you? 📍",
+  whereFromBody: "We'll show how close each shop is and sort the gifts nearest first. Your city stays in your browser only.",
+  cityPlaceholder: "Choose a city",
+  kmFromYou: (km) => (km < 1 ? "In your city" : `${km} km from you`),
+  closest: "⭐ Closest to you",
+  changeCity: "Change city",
+  skip: "Later",
+  requestNote: "Paying sends the shop a request to check the gift is in stock and set it aside for you. The shop will email you — and if it's not in stock, you get your money back.",
+  thanksPending: "Your order was sent to the shop! 🎉",
+  thanksPendingBody: "The shop is checking the gift is in stock and will set it aside for you. We'll email you as soon as they confirm.",
 };
 
 const Ctx = createContext<{ t: Dict; lang: Lang; setLang: (l: Lang) => void }>({ t: he, lang: "he", setLang: () => {} });

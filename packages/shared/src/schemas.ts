@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { THEME_IDS } from "./themes";
 import { quizAnswersSchema } from "./quiz";
+import { cityIdSchemaValues, findCity } from "./cities";
+
+export const cityIdSchema = z.enum(cityIdSchemaValues);
 
 // ---------- primitives ----------
 export const CATEGORIES = ["toys", "books", "lego", "sports", "art", "games", "other"] as const;
@@ -42,6 +45,8 @@ export const kidSignupSchema = z.object({
   birthday: dateSchema.optional(),
   avatar: avatarSchema.optional(),
   locale: z.enum(["he", "en"]).optional(),
+  /** the kid's city — the app shows only shops near it */
+  city: cityIdSchema,
 });
 export type KidSignupInput = z.infer<typeof kidSignupSchema>;
 
@@ -66,6 +71,7 @@ export const profileUpdateSchema = z
     avatar: avatarSchema.optional(),
     birthday: dateSchema.nullable().optional(),
     locale: z.enum(["he", "en"]).optional(),
+    city: cityIdSchema.optional(),
     currentPassword: z.string().max(128).optional(),
     newPassword: passwordSchema.optional(),
   })
@@ -137,11 +143,14 @@ export const checkoutSchema = z
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 // ---------- shops ----------
+const knownCity = trimmed(2, 40).refine((c) => !!findCity(c), "pick a city from the list");
+
 export const shopSignupSchema = z.object({
   name: trimmed(2, 60),
   businessId: z.string().trim().regex(/^\d{8,9}$/, "business ID must be 8–9 digits"),
   address: trimmed(5, 200),
-  city: trimmed(2, 40),
+  /** must be a known city so kids and buyers can see how close the shop is */
+  city: knownCity,
   phone: z.string().trim().regex(/^[0-9+\-\s()]{7,20}$/, "invalid phone"),
   contactName: trimmed(2, 60),
   email: emailSchema,
@@ -154,7 +163,7 @@ export const shopSignupSchema = z.object({
 export const shopUpdateSchema = z.object({
   name: trimmed(2, 60).optional(),
   address: trimmed(5, 200).optional(),
-  city: trimmed(2, 40).optional(),
+  city: knownCity.optional(),
   phone: z.string().trim().regex(/^[0-9+\-\s()]{7,20}$/).optional(),
   contactName: trimmed(2, 60).optional(),
   logoUrl: z.url().max(500).nullable().optional(),
@@ -192,4 +201,16 @@ export const stockSyncSchema = z.object({
 });
 
 export const orderStatusUpdateSchema = z.object({ status: z.enum(ORDER_STATUSES) });
+/** Shop answers a stock check: set the gift aside for the buyer, or say it is not in stock. */
+export const stockResponseSchema = z.object({ inStock: z.boolean() });
+
+export const TEMPLATE_KEYS = ["set_aside", "unavailable"] as const;
+export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
+export const TEMPLATE_PLACEHOLDERS = [
+  "orderNumber", "buyerName", "kidName", "shopName", "shopAddress", "shopPhone", "pickupInfo", "items", "total", "date", "receiptLink", "listLink",
+] as const;
+export const templateUpdateSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(5000),
+});
 export const shopDecisionSchema = z.object({ decision: z.enum(["approve", "reject", "suspend"]) });

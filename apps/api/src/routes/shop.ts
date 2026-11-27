@@ -9,7 +9,10 @@ import {
   resetSchema,
   shopSignupSchema,
   shopUpdateSchema,
+  stockResponseSchema,
   stockSyncSchema,
+  formatILS,
+  type TemplateKey,
   type OrderStatus,
   type ShopDashboard,
   type ShopOrder,
@@ -22,11 +25,12 @@ import { all, one, run, tx } from "../db";
 import { audit } from "../lib/audit";
 import { issueTokens, requireAuth, revokeRefresh, rotateRefresh } from "../lib/auth";
 import { newId, randomBase62, randomToken, sha256Hex } from "../lib/crypto";
-import { badRequest, conflict, forbidden, notFound, unauthorized } from "../lib/errors";
+import { ApiError, badRequest, conflict, forbidden, notFound, unauthorized } from "../lib/errors";
 import { dummyVerify, hashPassword, verifyPassword } from "../lib/passwords";
 import { enforce, ipHash } from "../lib/rateLimit";
 import { body } from "../lib/validate";
-import { notify, sendWebhook } from "../services/notify";
+import { GIFT_BOUGHT, notify, sendWebhook } from "../services/notify";
+import { getTemplate, renderTemplate, type TemplateVars } from "../services/emailTemplates";
 import { resetEmail, shopPendingEmail } from "../email/templates";
 import { resetPassword } from "./kidAuth";
 import { upsertProducts, syncStock } from "../services/products";
@@ -397,10 +401,15 @@ export async function shopOrders(deps: Deps, shopId: string, status?: string): P
     greeting: string | null;
     delivery_method: "pickup" | "delivery";
     delivery_address_enc: string | null;
+    decline_reason: string | null;
+    responded_at: number | null;
+    buyer_notified_at: number | null;
+    buyer_notified_count: number;
   }>(
     db,
     `SELECT o.id, o.number, o.status, o.total_agorot, o.created_at, o.updated_at, r.number AS receipt_number, r.buyer_name,
-            r.kid_first_name, r.greeting, r.delivery_method, r.delivery_address_enc
+            r.kid_first_name, r.greeting, r.delivery_method, r.delivery_address_enc,
+            o.decline_reason, o.responded_at, o.buyer_notified_at, o.buyer_notified_count
      FROM orders o JOIN receipts r ON r.id = o.receipt_id
      WHERE o.shop_id = ? ${status ? "AND o.status = ?" : ""} ORDER BY o.created_at DESC LIMIT 200`,
     status ? [shopId, status] : [shopId],
@@ -428,6 +437,10 @@ export async function shopOrders(deps: Deps, shopId: string, status?: string): P
       items: items
         .filter((i) => i.order_id === r.id)
         .map((i) => ({ title: i.title_snapshot, sku: i.sku, priceAgorot: Number(i.price_agorot), quantity: Number(i.quantity) })),
+      declineReason: r.decline_reason,
+      respondedAt: r.responded_at == null ? null : Number(r.responded_at),
+      buyerNotifiedAt: r.buyer_notified_at == null ? null : Number(r.buyer_notified_at),
+      buyerNotifiedCount: Number(r.buyer_notified_count ?? 0),
     })),
   );
 }
@@ -438,8 +451,9 @@ shop.get("/orders", async (c) => {
   return c.json({ items: await shopOrders(c.var.deps, c.var.subjectId, status) });
 });
 
+// "new" orders go through the stock check (POST /orders/:id/stock) instead of a plain status change.
 const NEXT: Record<OrderStatus, OrderStatus[]> = {
-  new: ["preparing", "cancelled"],
+  new: ["cancelled"],
   preparing: ["ready", "shipped", "cancelled"],
   ready: ["done"],
   shipped: ["done"],
@@ -475,6 +489,123 @@ shop.patch("/orders/:id", async (c) => {
     await sendWebhook(deps, o.webhook_url, await box.decrypt(o.webhook_secret_enc), "order.status_changed", { orderNumber: o.number, from: o.status, status });
   }
   return c.json((await shopOrders(deps, c.var.subjectId)).find((x) => x.id === o.id));
+});
+
+// ---- stock check: the shop confirms the gift is in stock (and sets it aside) or declines ----
+shop.post("/orders/:id/stock", async (c) => {
+  const deps = c.var.deps;
+  const { db, box, payments, now } = deps;
+  const { inStock } = await body(c, stockResponseSchema);
+  const o = await one<{
+    id: string; number: string; status: OrderStatus; total_agorot: number; receipt_id: string; list_id: string; user_id: string;
+    webhook_url: string | null; webhook_secret_enc: string | null;
+  }>(
+    db,
+    `SELECT o.id, o.number, o.status, o.total_agorot, o.receipt_id, r.list_id, l.user_id, sh.webhook_url, sh.webhook_secret_enc
+     FROM orders o JOIN shops sh ON sh.id = o.shop_id JOIN receipts r ON r.id = o.receipt_id JOIN lists l ON l.id = r.list_id
+     WHERE o.id = ? AND o.shop_id = ?`,
+    [c.req.param("id"), c.var.subjectId],
+  );
+  if (!o) throw notFound("order");
+  if (o.status !== "new") throw conflict("already_answered", "this order was already answered");
+  const ts = now();
+  let refundRef: string | null = null;
+  if (!inStock) {
+    const pay = await one<{ provider_ref: string }>(db, "SELECT provider_ref FROM payments WHERE receipt_id = ? AND status = 'succeeded' LIMIT 1", [o.receipt_id]);
+    if (pay) {
+      await payments.refund(pay.provider_ref, Number(o.total_agorot));
+      refundRef = pay.provider_ref;
+    }
+  }
+  await tx(db, async (t) => {
+    if (inStock) {
+      await run(t, "UPDATE orders SET status = 'ready', responded_at = ?, updated_at = ? WHERE id = ?", [ts, ts, o.id]);
+      // the gift is really on its way now — tell the kid (never who or what)
+      await notify(t, { recipientType: "kid", recipientId: o.user_id, ...GIFT_BOUGHT, refId: o.list_id }, ts);
+    } else {
+      await run(t, "UPDATE orders SET status = 'cancelled', decline_reason = 'unavailable', responded_at = ?, updated_at = ? WHERE id = ?", [ts, ts, o.id]);
+      const items = await all<{ list_item_id: string; product_id: string }>(t, "SELECT list_item_id, product_id FROM order_items WHERE order_id = ?", [o.id]);
+      for (const i of items) {
+        // the shop has none: mark it out of stock and put the gift back on the kid's list
+        await run(t, "UPDATE stock SET quantity = 0, updated_at = ? WHERE product_id = ?", [ts, i.product_id]);
+        await run(t, "UPDATE list_items SET status = 'available', purchased_at = NULL WHERE id = ?", [i.list_item_id]);
+      }
+      if (refundRef) {
+        await run(t, "INSERT INTO payments (id, receipt_id, provider, provider_ref, amount_agorot, status, created_at) VALUES (?,?,?,?,?,'refunded',?)", [
+          newId(), o.receipt_id, payments.name, refundRef, o.total_agorot, ts,
+        ]);
+      }
+    }
+    await audit(t, { actorType: "shop", actorId: c.var.subjectId, action: inStock ? "order.set_aside" : "order.unavailable", targetType: "order", targetId: o.id }, ts);
+  });
+  if (o.webhook_url && o.webhook_secret_enc) {
+    await sendWebhook(deps, o.webhook_url, await box.decrypt(o.webhook_secret_enc), "order.status_changed", {
+      orderNumber: o.number, from: "new", status: inStock ? "ready" : "cancelled",
+    });
+  }
+  return c.json((await shopOrders(deps, c.var.subjectId)).find((x) => x.id === o.id));
+});
+
+/** Builds the admin template + values for an answered order. */
+async function orderEmail(deps: Deps, shopId: string, orderId: string) {
+  const { db, box, config } = deps;
+  const o = await one<{
+    id: string; number: string; status: OrderStatus; decline_reason: string | null; total_agorot: number; created_at: number;
+    buyer_name: string; buyer_email_enc: string; kid_first_name: string; receipt_id: string; access_token_enc: string | null; list_id: string;
+    shop_name: string; address_enc: string; city: string; phone_enc: string; pickup_info: string | null;
+  }>(
+    db,
+    `SELECT o.id, o.number, o.status, o.decline_reason, o.total_agorot, o.created_at, r.buyer_name, r.buyer_email_enc, r.kid_first_name,
+            r.id AS receipt_id, r.access_token_enc, r.list_id, sh.name AS shop_name, sh.address_enc, sh.city, sh.phone_enc, sh.pickup_info
+     FROM orders o JOIN receipts r ON r.id = o.receipt_id JOIN shops sh ON sh.id = o.shop_id WHERE o.id = ? AND o.shop_id = ?`,
+    [orderId, shopId],
+  );
+  if (!o) throw notFound("order");
+  const key: TemplateKey | null =
+    o.status === "cancelled" && o.decline_reason === "unavailable" ? "unavailable" : o.status === "new" || o.status === "cancelled" ? null : "set_aside";
+  if (!key) throw badRequest("not_answered", "check the stock first (in stock / not in stock)");
+  const items = await all<{ title_snapshot: string; price_agorot: number; quantity: number }>(
+    db, "SELECT title_snapshot, price_agorot, quantity FROM order_items WHERE order_id = ?", [o.id],
+  );
+  const slug = await one<{ slug: string }>(db, "SELECT slug FROM share_links WHERE list_id = ? AND enabled = 1 AND revoked_at IS NULL LIMIT 1", [o.list_id]);
+  const guest = config.PUBLIC_GUEST_URL.replace(/\/$/, "");
+  const token = await box.decryptNullable(o.access_token_enc);
+  const vars: TemplateVars = {
+    orderNumber: o.number,
+    buyerName: o.buyer_name,
+    kidName: o.kid_first_name,
+    shopName: o.shop_name,
+    shopAddress: `${await box.decrypt(o.address_enc)}, ${o.city}`,
+    shopPhone: await box.decrypt(o.phone_enc),
+    pickupInfo: o.pickup_info ?? "",
+    items: items.map((i) => `• ${i.title_snapshot}${i.quantity > 1 ? " ×" + i.quantity : ""} — ${formatILS(i.price_agorot * i.quantity)}`).join("\n"),
+    total: formatILS(Number(o.total_agorot)),
+    date: new Date(Number(o.created_at)).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" }),
+    receiptLink: token ? `${guest}/bill/${o.receipt_id}?t=${token}` : "",
+    listLink: slug ? `${guest}/l/${slug.slug}` : "",
+  };
+  const template = await getTemplate(db, key);
+  return { order: o, key, rendered: renderTemplate(template, vars), to: await box.decrypt(o.buyer_email_enc) };
+}
+
+/** What the buyer email will look like, so the shop sees it before pressing send. */
+shop.get("/orders/:id/email-preview", async (c) => {
+  const { key, rendered } = await orderEmail(c.var.deps, c.var.subjectId, c.req.param("id"));
+  return c.json({ template: key, subject: rendered.subject, text: rendered.text });
+});
+
+/** The shop presses "send email to buyer": the admin's template filled with this order's details. */
+shop.post("/orders/:id/notify-buyer", async (c) => {
+  const deps = c.var.deps;
+  const { db, mailer, now } = deps;
+  await enforce(c, "notify-buyer", 30, 3600_000);
+  const { order, key, rendered, to } = await orderEmail(deps, c.var.subjectId, c.req.param("id"));
+  const ts = now();
+  const ok = await mailer.send(db, { to, subject: rendered.subject, html: rendered.html, kind: `order_${key}` }, ts);
+  if (!ok) throw new ApiError(502, "email_failed", "the email could not be sent, try again");
+  await run(db, "UPDATE orders SET buyer_notified_at = ?, buyer_notified_count = buyer_notified_count + 1, updated_at = ? WHERE id = ?", [ts, ts, order.id]);
+  await audit(db, { actorType: "shop", actorId: c.var.subjectId, action: "order.notify_buyer", targetType: "order", targetId: order.id, meta: { template: key } }, ts);
+  return c.json((await shopOrders(deps, c.var.subjectId)).find((x) => x.id === order.id));
 });
 
 // ---- API key ----

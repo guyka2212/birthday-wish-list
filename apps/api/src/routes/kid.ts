@@ -25,6 +25,7 @@ import { hashPassword, verifyPassword } from "../lib/passwords";
 import { enforce } from "../lib/rateLimit";
 import { body, query } from "../lib/validate";
 import { searchCatalog, shopsForFilter, trending } from "../services/catalog";
+import { nearbyShops } from "../services/nearby";
 import { daysUntil, listDetail, listsForUser, ownedList } from "../services/lists";
 import { consentEmail } from "../email/templates";
 
@@ -42,12 +43,13 @@ interface UserRow {
   consent_status: "pending" | "verified";
   password_hash: string;
   has_photo: number;
+  city_enc: string | null;
 }
 
 async function loadUser(deps: Deps, id: string): Promise<UserRow> {
   const u = await one<UserRow>(
     deps.db,
-    "SELECT id, username, first_name, email_enc, avatar, birthday, locale, consent_status, password_hash, (photo_enc IS NOT NULL) AS has_photo FROM users WHERE id = ? AND deleted_at IS NULL",
+    "SELECT id, username, first_name, email_enc, avatar, birthday, locale, consent_status, password_hash, (photo_enc IS NOT NULL) AS has_photo, city_enc FROM users WHERE id = ? AND deleted_at IS NULL",
     [id],
   );
   if (!u) throw unauthorized("account not found");
@@ -65,7 +67,20 @@ async function toProfile(deps: Deps, u: UserRow): Promise<KidProfile> {
     locale: u.locale,
     consentStatus: u.consent_status,
     hasPhoto: !!Number(u.has_photo),
+    city: await deps.box.decryptNullable(u.city_enc),
   };
+}
+
+/** The shops a kid may shop from: the ones nearest to their city (all shops if no city yet). */
+async function kidShops(deps: Deps, userId: string) {
+  const row = await one<{ city_enc: string | null }>(deps.db, "SELECT city_enc FROM users WHERE id = ?", [userId]);
+  const city = await deps.box.decryptNullable(row?.city_enc);
+  const shops = await nearbyShops(deps.db, city);
+  return { city, shops, ids: shops.map((s) => s.id), dist: new Map(shops.map((s) => [s.id, s.distanceKm])) };
+}
+
+function withDistance<T extends { shop: { id: string } }>(items: T[], dist: Map<string, number | null>) {
+  return items.map((p) => ({ ...p, shop: { ...p.shop, distanceKm: dist.get(p.shop.id) ?? null } }));
 }
 
 /** Columns to write when a list gets quiz answers (custom theme) or a preset theme. */
@@ -103,6 +118,7 @@ kid.patch("/me", async (c) => {
   if (input.avatar !== undefined) set("avatar", input.avatar);
   if (input.birthday !== undefined) set("birthday", input.birthday);
   if (input.locale !== undefined) set("locale", input.locale);
+  if (input.city !== undefined) set("city_enc", await box.encrypt(input.city));
   if (input.email !== undefined) {
     const h = await box.blindIndex(input.email);
     const taken = await one(db, "SELECT 1 FROM users WHERE email_hash = ? AND id != ?", [h, u.id]);
@@ -131,7 +147,7 @@ kid.delete("/me", async (c) => {
   await tx(db, async (t) => {
     await run(
       t,
-      `UPDATE users SET deleted_at = ?, updated_at = ?, username = 'deleted', first_name = '', email_enc = '', email_hash = ?, password_hash = '', birthday = NULL, photo_enc = NULL WHERE id = ?`,
+      `UPDATE users SET deleted_at = ?, updated_at = ?, username = 'deleted', first_name = '', email_enc = '', email_hash = ?, password_hash = '', birthday = NULL, photo_enc = NULL, city_enc = NULL WHERE id = ?`,
       [ts, ts, `deleted:${id}`, id],
     );
     await run(t, "UPDATE parent_consents SET parent_email_enc = '', parent_email_hash = '' WHERE user_id = ?", [id]);
@@ -185,7 +201,7 @@ kid.get("/me/home", async (c) => {
     profile: await toProfile(deps, u),
     activeList,
     daysToBirthday: daysUntil(activeList?.birthday ?? u.birthday, deps.now()),
-    trending: await trending(deps.db, 10),
+    trending: await (async () => { const near = await kidShops(deps, u.id); return withDistance(await trending(deps.db, 10, near.ids), near.dist); })(),
     activity: items,
     unread: Number(unread?.n ?? 0),
   };
@@ -253,15 +269,26 @@ kid.post("/themes/preview", async (c) => {
 });
 
 // ---------- catalog ----------
+// Kids only see shops near their city (within NEARBY_RADIUS_KM, at least the 2 closest).
 kid.get("/catalog", async (c) => {
   const f = query(c, catalogQuerySchema);
-  return c.json({ items: await searchCatalog(c.var.deps.db, f) });
+  const near = await kidShops(c.var.deps, c.var.subjectId);
+  const shopIds = f.shopIds ? f.shopIds.filter((id) => near.ids.includes(id)) : near.ids;
+  const items = shopIds.length ? await searchCatalog(c.var.deps.db, { ...f, shopIds }) : [];
+  return c.json({ items: withDistance(items, near.dist), city: near.city });
 });
-kid.get("/catalog/trending", async (c) => c.json({ items: await trending(c.var.deps.db, 12) }));
+kid.get("/catalog/trending", async (c) => {
+  const near = await kidShops(c.var.deps, c.var.subjectId);
+  return c.json({ items: withDistance(await trending(c.var.deps.db, 12, near.ids), near.dist) });
+});
 kid.get("/catalog/shops", async (c) => {
-  const rows = await shopsForFilter(c.var.deps.db);
+  const near = await kidShops(c.var.deps, c.var.subjectId);
+  const rows = (await shopsForFilter(c.var.deps.db)).filter((r) => near.ids.includes(r.id));
   return c.json({
-    items: rows.map((r) => ({ id: r.id, name: r.name, city: r.city, logoUrl: r.logo_url, brandColor: r.brand_color, products: Number(r.products) })),
+    city: near.city,
+    items: rows
+      .map((r) => ({ id: r.id, name: r.name, city: r.city, logoUrl: r.logo_url, brandColor: r.brand_color, products: Number(r.products), distanceKm: near.dist.get(r.id) ?? null }))
+      .sort((x, y) => (x.distanceKm ?? 1e9) - (y.distanceKm ?? 1e9)),
   });
 });
 

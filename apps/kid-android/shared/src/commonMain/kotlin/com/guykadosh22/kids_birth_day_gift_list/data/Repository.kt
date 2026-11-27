@@ -40,6 +40,10 @@ class Repository(val api: ApiClient) {
     suspend fun photo(): PhotoResponse = api.get("kid/me/photo")
     suspend fun deletePhoto() { api.delete<Unit>("kid/me/photo") }
 
+    // ---- cities (public; cached for the app run) ----
+    private var cities: List<CityItem>? = null
+    suspend fun cities(): List<CityItem> = cities ?: api.get<Items<CityItem>>("cities", auth = false).items.also { cities = it }
+
     // ---- theme quiz ----
     suspend fun quiz(): List<QuizQuestion> = api.get<QuizResponse>("kid/quiz").questions
     suspend fun previewTheme(answers: Map<String, String>): ThemeDto = api.post("kid/themes/preview", PreviewRequest(answers))

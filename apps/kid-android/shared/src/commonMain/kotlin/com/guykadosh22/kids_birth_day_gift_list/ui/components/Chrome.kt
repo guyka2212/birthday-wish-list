@@ -187,6 +187,7 @@ fun ProductTile(product: Product, inList: Boolean, purchased: Boolean, busy: Boo
         Spacer(Modifier.height(Space.s))
         Text(product.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.heightIn(min = 40.dp))
         Text(product.shop.name, style = MaterialTheme.typography.bodySmall, color = BwlColors.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        product.shop.distanceKm?.let { Text("📍 " + s.kmAway(it), style = MaterialTheme.typography.labelSmall, color = BwlColors.InkSoft) }
         Row(Modifier.fillMaxWidth().padding(top = Space.xs), verticalAlignment = Alignment.CenterVertically) {
             Text(formatShekel(product.priceAgorot), style = MaterialTheme.typography.titleMedium, color = BwlColors.SkyDeep, modifier = Modifier.weight(1f))
             if (!purchased && (product.inStock || inList)) {

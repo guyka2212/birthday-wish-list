@@ -64,7 +64,14 @@ export default function BillPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
-        {justPaid ? <h1 className="animate-pop text-2xl font-extrabold text-ink sm:text-3xl">{t.thanks}</h1> : <span />}
+        {justPaid ? (
+          <div className="animate-pop">
+            <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">{receipt.orders.some((o) => o.status === "new") ? t.thanksPending : t.thanks}</h1>
+            {receipt.orders.some((o) => o.status === "new") && <p className="mt-1 max-w-xl text-ink-soft">{t.thanksPendingBody}</p>}
+          </div>
+        ) : (
+          <span />
+        )}
         <LangToggle />
       </div>
 

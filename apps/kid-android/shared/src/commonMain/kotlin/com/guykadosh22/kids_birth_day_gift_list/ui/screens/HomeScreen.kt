@@ -91,6 +91,9 @@ fun HomeScreen(repo: Repository, onOpenList: (String) -> Unit, onCreateList: () 
             }
             LazyColumn(contentPadding = PaddingValues(Space.l), verticalArrangement = Arrangement.spacedBy(Space.l)) {
                 item { Greeting(home) }
+                if (home.profile.city == null) {
+                    item { BwlCard(Modifier.fillMaxWidth(), color = Color(0xFFFFF3C4)) { Text(s.addCityTitle, style = MaterialTheme.typography.titleSmall) } }
+                }
                 item {
                     val list = home.activeList
                     if (list == null) {

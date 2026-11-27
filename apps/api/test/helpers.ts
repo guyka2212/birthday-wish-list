@@ -75,7 +75,7 @@ export async function setup(env: Record<string, string> = {}): Promise<TestCtx> 
 /** Insert an approved shop with products. Returns ids. */
 export async function seedShop(
   ctx: TestCtx,
-  opts: { status?: string; email?: string; password?: string; webhookUrl?: string; products?: Array<{ sku: string; price: number; stock: number }> } = {},
+  opts: { status?: string; email?: string; password?: string; webhookUrl?: string; city?: string; name?: string; products?: Array<{ sku: string; price: number; stock: number }> } = {},
 ) {
   const { db, box } = ctx.deps;
   const id = newId();
@@ -87,11 +87,11 @@ export async function seedShop(
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
-      "Test Toys",
+      opts.name ?? "Test Toys",
       `test-${randomBase62(5)}`,
       await box.encrypt("514839201"),
       await box.encrypt("Herzl 1"),
-      "Haifa",
+      opts.city ?? "Haifa",
       await box.encrypt("04-1234567"),
       "Dana",
       await box.encrypt(email),
@@ -130,6 +130,7 @@ export const kidInput = (over: Record<string, unknown> = {}) => ({
   password: "secret123",
   parentEmail: "mom@example.com",
   birthday: "2016-12-20",
+  city: "haifa",
   ...over,
 });
 

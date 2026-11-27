@@ -18,10 +18,12 @@ data class KidProfile(
     val locale: String = "he",
     val consentStatus: String = "pending",
     val hasPhoto: Boolean = false,
+    /** city id (see GET /cities); the catalog shows only shops near it */
+    val city: String? = null,
 )
 
 @Serializable
-data class ShopSummary(val id: String, val name: String, val city: String, val logoUrl: String? = null, val brandColor: String = "#3FA9F5")
+data class ShopSummary(val id: String, val name: String, val city: String, val logoUrl: String? = null, val brandColor: String = "#3FA9F5", val distanceKm: Int? = null)
 
 @Serializable
 data class Product(
@@ -91,7 +93,9 @@ data class HomeSummary(
 )
 
 @Serializable
-data class ShopFilterItem(val id: String, val name: String, val city: String, val logoUrl: String? = null, val brandColor: String = "#3FA9F5", val products: Int = 0)
+data class ShopFilterItem(val id: String, val name: String, val city: String, val logoUrl: String? = null, val brandColor: String = "#3FA9F5", val products: Int = 0, val distanceKm: Int? = null)
+
+@Serializable data class CityItem(val id: String, val he: String, val en: String)
 
 @Serializable data class Items<T>(val items: List<T>)
 
@@ -113,6 +117,7 @@ data class SignupRequest(
     val birthday: String? = null,
     val avatar: String? = null,
     val locale: String? = null,
+    val city: String,
 )
 
 @Serializable
@@ -122,6 +127,7 @@ data class ProfileUpdate(
     val email: String? = null,
     val avatar: String? = null,
     val locale: String? = null,
+    val city: String? = null,
     val currentPassword: String? = null,
     val newPassword: String? = null,
 )

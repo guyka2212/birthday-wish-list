@@ -36,6 +36,7 @@ import com.guykadosh22.kids_birth_day_gift_list.data.Repository
 import com.guykadosh22.kids_birth_day_gift_list.ui.ProfileViewModel
 import com.guykadosh22.kids_birth_day_gift_list.ui.SessionViewModel
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.PhotoPicker
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.CityPicker
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.ProfilePhoto
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.rememberImage
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,6 +82,7 @@ fun ProfileScreen(
     var username by rememberSaveable(profile.username) { mutableStateOf(profile.username) }
     var email by rememberSaveable(profile.email) { mutableStateOf(profile.email) }
     var avatar by rememberSaveable(profile.avatar) { mutableStateOf(profile.avatar) }
+    var city by rememberSaveable(profile.city) { mutableStateOf(profile.city ?: "") }
     var currentPassword by rememberSaveable { mutableStateOf("") }
     var newPassword by rememberSaveable { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -121,6 +123,11 @@ fun ProfileScreen(
 
         BwlTextField(username, { username = it }, s.username, enabled = editing)
         BwlTextField(email, { email = it.trim() }, s.email, keyboardType = KeyboardType.Email, enabled = editing)
+        // the city can be changed any time (it decides which shops the kid sees)
+        CityPicker(repo, city, { picked ->
+            city = picked
+            vm.save(ProfileUpdate(city = picked)) { onProfile(it); platform.toast(s.profileSaved) }
+        })
         if (editing) {
             BwlTextField(currentPassword, { currentPassword = it }, s.currentPassword, password = true)
             BwlTextField(newPassword, { newPassword = it }, s.newPassword, password = true, supporting = s.passwordRules)

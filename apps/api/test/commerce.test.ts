@@ -69,10 +69,9 @@ describe("reservations and checkout", () => {
 
     const detail = await ctx.call("GET", `/kid/lists/${listId}`, undefined, { token: kid.accessToken });
     expect(detail.json.purchasedCount).toBe(2);
+    // the kid is only told once the shop confirms the stock (see location-stock.test.ts)
     const home = await ctx.call("GET", "/kid/me/home", undefined, { token: kid.accessToken });
-    expect(home.json.activity[0].kind).toBe("gift_bought");
-    expect(JSON.stringify(home.json.activity)).not.toContain("סבתא");
-    expect(JSON.stringify(home.json.activity)).not.toContain("Product TEDDY");
+    expect(home.json.activity).toHaveLength(0);
 
     const kinds = (await ctx.deps.db.execute("SELECT kind FROM email_outbox ORDER BY created_at")).rows.map((r) => r.kind);
     expect(kinds).toContain("receipt");

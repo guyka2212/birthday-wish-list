@@ -70,18 +70,43 @@ export function DashboardPage() {
 }
 
 const NEXT: Record<string, Array<[string, string]>> = {
-  new: [["preparing", "להתחיל הכנה"], ["cancelled", "ביטול"]],
+  new: [],
   preparing: [["ready", "מוכנה לאיסוף"], ["shipped", "נשלחה"], ["cancelled", "ביטול"]],
-  ready: [["done", "נאספה ✓"]],
+  ready: [["done", "נאספה ✓"], ["shipped", "נשלחה במשלוח"]],
   shipped: [["done", "נמסרה ✓"]],
 };
-const FLOW = ["new", "preparing", "ready", "done"];
+const FLOW = ["new", "ready", "done"];
 
 export function OrdersPage() {
   const [filter, setFilter] = useState("");
   const { data, setData, error, loading, reload } = useLoad(() => shopApi.orders(filter || undefined), [filter]);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const [preview, setPreview] = useState<Record<string, { subject: string; text: string }>>({});
+  const replace = (u: ShopOrder) => setData((data ?? []).map((x) => (x.id === u.id ? u : x)));
+
+  async function act(o: ShopOrder, fn: () => Promise<ShopOrder>) {
+    setBusy(o.id);
+    setErr(null);
+    try {
+      replace(await fn());
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function togglePreview(o: ShopOrder) {
+    if (preview[o.id]) return setPreview(({ [o.id]: _, ...rest }) => rest);
+    try {
+      const p = await shopApi.emailPreview(o.id);
+      setPreview((m) => ({ ...m, [o.id]: p }));
+    } catch (e) {
+      setErr(errText(e));
+    }
+  }
 
   async function move(o: ShopOrder, status: string) {
     if (status === "cancelled" && !confirm("לבטל את ההזמנה? המתנה תחזור לרשימה ולמלאי.")) return;
@@ -125,7 +150,7 @@ export function OrdersPage() {
                 return (
                   <li key={s} className="flex flex-1 items-center gap-1">
                     <span className={`flex size-7 items-center justify-center rounded-full ${reached ? "bg-mint text-white" : "bg-sky-soft"}`}>{i + 1}</span>
-                    <span className="hidden sm:inline">{s === "ready" && o.status === "shipped" ? "נשלחה" : { new: "חדשה", preparing: "בהכנה", ready: "מוכנה", done: "הושלמה" }[s]}</span>
+                    <span className="hidden sm:inline">{s === "ready" && o.status === "shipped" ? "נשלחה" : { new: "בדיקת מלאי", ready: "שמור בצד", done: "נאסף" }[s]}</span>
                     {i < FLOW.length - 1 && <span className={`h-1 flex-1 rounded ${reached ? "bg-mint" : "bg-sky-soft"}`} />}
                   </li>
                 );
@@ -141,6 +166,43 @@ export function OrdersPage() {
             </ul>
             <p className="text-sm">{o.deliveryMethod === "pickup" ? "🏪 איסוף מהחנות" : `🚚 משלוח: ${o.deliveryAddress}`}</p>
             {o.greeting && <p className="mt-2 rounded-xl bg-sun/15 p-3 text-sm">💌 {o.greeting}</p>}
+            {o.status === "new" && (
+              <div className="mt-3 rounded-2xl border-2 border-sun bg-sun/10 p-4">
+                <p className="mb-2 font-extrabold">🔎 לקוח רוצה לקנות את המתנה — יש לכם אותה במלאי?</p>
+                <p className="mb-3 text-sm text-ink-soft">אם כן, שימו אותה בצד בשבילו. אם לא, ההזמנה תבוטל, התשלום יוחזר והמתנה תחזור לרשימה של הילד/ה.</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button disabled={busy === o.id} onClick={() => act(o, () => shopApi.answerStock(o.id, true))}>✓ יש במלאי — שמנו בצד</Button>
+                  <Button variant="danger" disabled={busy === o.id} onClick={() => confirm("לסמן שאין במלאי? ההזמנה תבוטל והתשלום יוחזר.") && act(o, () => shopApi.answerStock(o.id, false))}>
+                    ✗ אין במלאי
+                  </Button>
+                </div>
+              </div>
+            )}
+            {o.respondedAt && (o.status !== "cancelled" || o.declineReason === "unavailable") && (
+              <div className="mt-3 rounded-2xl bg-sky-soft/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold">
+                    {o.buyerNotifiedAt
+                      ? `📧 נשלח מייל לקונה (${o.buyerNotifiedCount}×, לאחרונה ${new Date(o.buyerNotifiedAt).toLocaleString("he-IL")})`
+                      : o.declineReason === "unavailable"
+                        ? "📧 עדכנו את הקונה שהמתנה לא במלאי"
+                        : "📧 עדכנו את הקונה שהמתנה שמורה בצד"}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="ghost" onClick={() => togglePreview(o)}>{preview[o.id] ? "להסתיר" : "👁️ תצוגה מקדימה"}</Button>
+                    <Button variant="sky" disabled={busy === o.id} onClick={() => act(o, () => shopApi.notifyBuyer(o.id))}>
+                      {o.buyerNotifiedAt ? "📧 לשלוח שוב" : "📧 שליחת מייל לקונה"}
+                    </Button>
+                  </div>
+                </div>
+                {preview[o.id] && (
+                  <div className="mt-3 rounded-xl bg-white p-3 text-sm">
+                    <p className="mb-2 font-bold">{preview[o.id]!.subject}</p>
+                    <pre className="whitespace-pre-wrap font-sans">{preview[o.id]!.text}</pre>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span className="text-lg font-extrabold">{formatILS(o.totalAgorot)}</span>
               <div className="flex flex-wrap gap-2">

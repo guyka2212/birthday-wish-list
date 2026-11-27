@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { auth, ApiError } from "../lib/api";
+import { CITIES } from "@bwl/shared";
 import { Button, Card, Field, inputClass } from "../components/ui";
 
 const errText = (e: unknown) =>
@@ -108,7 +109,7 @@ export function SignupPage() {
         <Field label="שם החנות"><input className={inputClass} value={f.name} onChange={set("name")} required /></Field>
         <Field label="ח.פ / עוסק מורשה" hint="8–9 ספרות"><input className={inputClass} inputMode="numeric" dir="ltr" value={f.businessId} onChange={set("businessId")} required /></Field>
         <Field label="כתובת"><input className={inputClass} value={f.address} onChange={set("address")} required /></Field>
-        <Field label="עיר"><input className={inputClass} value={f.city} onChange={set("city")} required /></Field>
+        <Field label="עיר" hint="בחרו מהרשימה — כך ילדים וקונים יראו כמה החנות קרובה אליהם"><input className={inputClass} list="bwl-cities" value={f.city} onChange={set("city")} required /><datalist id="bwl-cities">{CITIES.map((c) => <option key={c.id} value={c.he} />)}</datalist></Field>
         <Field label="טלפון"><input className={inputClass} dir="ltr" type="tel" value={f.phone} onChange={set("phone")} required /></Field>
         <Field label="איש/אשת קשר"><input className={inputClass} value={f.contactName} onChange={set("contactName")} required /></Field>
         <Field label="מייל"><input className={inputClass} dir="ltr" type="email" autoComplete="username" value={f.email} onChange={set("email")} required /></Field>
