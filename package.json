@@ -19,7 +19,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "postinstall": "simple-git-hooks || true"
+    "postinstall": "simple-git-hooks || true",
+    "admin:set": "tsx scripts/set-admin.ts"
   },
   "simple-git-hooks": {
     "pre-commit": "node scripts/secret-scan.mjs"
