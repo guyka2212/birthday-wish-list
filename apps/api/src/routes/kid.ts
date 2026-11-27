@@ -153,7 +153,13 @@ kid.get("/me/home", async (c) => {
   const deps = c.var.deps;
   const u = await loadUser(deps, c.var.subjectId);
   const lists = await listsForUser(deps.db, u.id, deps.config.PUBLIC_GUEST_URL);
-  const activeList = lists[0] ?? null;
+  // "Active" = the list whose party date comes soonest; otherwise the most recently edited one.
+  const ts = deps.now();
+  const dated = lists
+    .map((l) => ({ l, d: daysUntil(l.birthday, ts) }))
+    .filter((x): x is { l: (typeof lists)[number]; d: number } => x.d != null)
+    .sort((a, b) => a.d - b.d);
+  const activeList = dated[0]?.l ?? lists[0] ?? null;
   const items = await activity(deps, u.id, 10);
   const unread = await one<{ n: number }>(
     deps.db,

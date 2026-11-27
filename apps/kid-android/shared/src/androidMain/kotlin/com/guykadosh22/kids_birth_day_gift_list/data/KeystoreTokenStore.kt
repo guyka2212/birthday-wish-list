@@ -18,6 +18,10 @@ class KeystoreTokenStore(context: Context) : TokenStore {
     private val prefs = context.applicationContext.getSharedPreferences("bwl_secure", Context.MODE_PRIVATE)
     private val alias = "bwl_token_key"
 
+    // Decrypting with the Keystore is slow (it is an IPC call), so keep the plaintext in memory after the first read.
+    @Volatile private var cached: AuthTokens? = null
+    @Volatile private var loaded = false
+
     private fun key(): SecretKey {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (ks.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
@@ -34,6 +38,13 @@ class KeystoreTokenStore(context: Context) : TokenStore {
 
     @Synchronized
     override fun load(): AuthTokens? {
+        if (loaded) return cached
+        cached = readFromDisk()
+        loaded = true
+        return cached
+    }
+
+    private fun readFromDisk(): AuthTokens? {
         val stored = prefs.getString("tokens", null) ?: return null
         return runCatching {
             val (ivB64, ctB64) = stored.split(":", limit = 2)
@@ -49,6 +60,8 @@ class KeystoreTokenStore(context: Context) : TokenStore {
 
     @Synchronized
     override fun save(tokens: AuthTokens?) {
+        cached = tokens
+        loaded = true
         if (tokens == null) {
             prefs.edit().remove("tokens").apply()
             return
