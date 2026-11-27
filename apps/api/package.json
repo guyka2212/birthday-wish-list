@@ -1,0 +1,25 @@
+{
+  "name": "@bwl/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/node.ts",
+    "start": "tsx src/node.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@bwl/shared": "*",
+    "@hono/node-server": "^2.1.11",
+    "@libsql/client": "^0.18.0",
+    "@node-rs/argon2": "^2.2.2",
+    "hono": "^4.13.23",
+    "jose": "^6.2.18",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

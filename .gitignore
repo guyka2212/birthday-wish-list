@@ -1,0 +1,34 @@
+# --- secrets: never commit ---
+.env
+.env.*
+!.env.example
+*.env
+.dev.vars
+apps/api/.env.demo
+*.pem
+*.jks
+*.keystore
+!debug.keystore
+
+# --- node ---
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+.vercel/
+
+# --- local databases ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# --- IDE / OS / build caches at the old root ---
+/.gradle/
+/.idea/
+/.kotlin/
+/build/
+.DS_Store
+Thumbs.db
+*.log

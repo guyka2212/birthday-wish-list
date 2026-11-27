@@ -1,0 +1,43 @@
+{
+  "name": "birthday-wish-list",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/web-guest",
+    "apps/web-shop"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,guest,shop -c blue,magenta,green \"npm run dev -w @bwl/api\" \"npm run dev -w @bwl/web-guest\" \"npm run dev -w @bwl/web-shop\"",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx db/seed/seed.ts",
+    "db:reset": "tsx scripts/migrate.ts --reset && tsx db/seed/seed.ts",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "secret-scan": "node scripts/secret-scan.mjs",
+    "postinstall": "simple-git-hooks || true"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "node scripts/secret-scan.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "concurrently": "^10.0.7",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "simple-git-hooks": "^2.14.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
