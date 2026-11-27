@@ -35,3 +35,14 @@ Judgment calls made while building, newest at the bottom of each section.
 - **PDF download is generated in the browser** with html2pdf, plus a print stylesheet, because the browser lays out Hebrew RTL text correctly.
 - **Fonts:** Rubik everywhere, from `@fontsource/rubik` on the web and a bundled TTF (OFL) on Android.
 - **English toggle:** included, since adding a second string table was cheap.
+
+## Build and deploy notes (added while building)
+- **Local API port is 4000, not 8787.** Windows (Hyper-V) reserves 8702–8801, so binding 8787 fails with EACCES.
+- **Product images are OpenMoji SVG illustrations** (CC BY-SA 4.0, credited in the guest-shop footer) on soft gradients. They're colorful, kid-friendly and always load. Real product photos would need licensed images from the shops, who can set `imageUrl` through the API or portal.
+- **Tests use temp-file libSQL databases, not `:memory:`.** libSQL write transactions open a new connection, which on `:memory:` would be an empty database.
+- **The production API uses `@libsql/client/web`** (HTTPS only, no native SQLite). Argon2id runs natively on Vercel's Linux Node runtime, and a live login takes about 1.4 s cold.
+- **Vercel deploys from a copy outside the repo** (see README). Inside the repo, Vercel attaches git metadata and refuses commits whose author isn't on the Vercel team.
+- **`AUTO_VERIFY_PARENT=true` in production for now.** Until real email is set up (Resend), consent emails only reach the outbox, so a real parent couldn't click the link. Once `RESEND_API_KEY` is set, switch it to `false` to require real parent approval.
+- **Release APK is signed with the debug key** so CI can publish an installable test build. A Play Store release needs a private upload key, which only you should hold.
+- **Android token storage keeps the decrypted tokens in memory after the first read.** Decrypting with the Keystore on every request blocked the main thread long enough to cause an ANR on a busy emulator.
+- **Home's "active list"** is the list with the nearest party date, falling back to the most recently edited one.

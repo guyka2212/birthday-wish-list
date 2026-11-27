@@ -2,6 +2,26 @@
 
 Kids build birthday wish lists from real products that local shops have in stock. They share a link, and family and friends buy from the list in a themed gift shop. Shops connect their stock through an API and fulfil the orders.
 
+## Live
+
+| What | URL |
+|---|---|
+| Guest gift shop (demo list) | https://guyka2212.github.io/birthday-wish-list/l/J0QGHvwPtnxtaNaq77SUCW |
+| Shop portal + admin (`/shop/admin/login`) | https://guyka2212.github.io/birthday-wish-list/shop/ |
+| Shop API docs | https://guyka2212.github.io/birthday-wish-list/shop/docs |
+| API (Vercel) · OpenAPI spec | https://birthday-wish-list-api.vercel.app · [/openapi.json](https://birthday-wish-list-api.vercel.app/openapi.json) |
+| Android APK (latest `main`) | https://github.com/guyka2212/birthday-wish-list/releases/tag/latest-apk |
+
+Demo logins (kid, shop, admin) are created by the seed script and saved to the gitignored `apps/api/.env.demo`. They are never committed.
+
+<p>
+  <img src="docs/screenshots/kid-home.png" width="180" alt="Home" />
+  <img src="docs/screenshots/kid-lists.png" width="180" alt="Lists" />
+  <img src="docs/screenshots/kid-edit.png" width="180" alt="Edit list" />
+  <img src="docs/screenshots/kid-new.png" width="180" alt="New list" />
+  <img src="docs/screenshots/kid-profile.png" width="180" alt="Profile" />
+</p>
+
 | Part | Folder | Stack |
 |---|---|---|
 | Kid app (Android) | `apps/kid-android` | Kotlin, Compose Multiplatform, RTL Hebrew |
@@ -40,6 +60,13 @@ npm run dev                              # API :4000 · guest :5173 · shop :517
 
 - Local dev uses a local libSQL file (`apps/api/local.db`). Set `DB_MODE=remote` in `.env` to use Turso.
 - Android: open `apps/kid-android` in Android Studio and run `androidApp`, or run `./gradlew :androidApp:installDebug`. Debug builds call `http://10.0.2.2:4000` (the API on your PC).
+
+## Deploying
+
+- **Websites:** pushing to `main` runs `.github/workflows/pages.yml`, which builds both sites with `VITE_API_URL` taken from the `API_URL` repo variable.
+- **API:** run `npm run build -w @bwl/api`, copy `apps/api/deploy/` to a folder **outside** the repo, then run `npx vercel deploy --prod` there. From inside the repo, Vercel attaches git metadata and refuses commits whose author isn't on the team. With a `VERCEL_TOKEN` repo secret, `.github/workflows/deploy-api.yml` does this automatically on push.
+- **Production secrets** live only in Vercel environment variables: Turso URL and token, JWT secret, encryption key, blind-index key, CORS origins and public URLs. `ENCRYPTION_KEY` and `BLIND_INDEX_KEY` must match the keys the Turso data was written with.
+- **Database:** run `DB_MODE=remote npm run db:migrate`. The seed only runs on an empty database.
 
 ## Tests and checks
 
