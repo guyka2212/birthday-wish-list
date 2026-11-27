@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@fontsource/rubik/400.css";
+@import "@fontsource/rubik/500.css";
+@import "@fontsource/rubik/700.css";
+
+@theme {
+  --font-sans: "Rubik", "Heebo", system-ui, sans-serif;
+  --color-sky: #3fa9f5;
+  --color-sky-deep: #1c7fd1;
+  --color-sky-soft: #e3f2ff;
+  --color-sun: #ffc93c;
+  --color-ink: #1d2b4f;
+  --color-ink-soft: #5b6a8a;
+  --color-mint: #2bc48a;
+  --color-danger: #e5484d;
+  --color-bg: #f2f8ff;
+}
+
+html, body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-sans); }
+:focus-visible { outline: 3px solid var(--color-sun); outline-offset: 2px; }
+.btn-press { transition: transform 0.12s ease; }
+.btn-press:active { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) { .btn-press:active { transform: none; } }

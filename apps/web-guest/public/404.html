@@ -9,6 +9,9 @@
       sessionStorage.setItem("spa-redirect", location.pathname + location.search + location.hash);
       var parts = location.pathname.split("/");
       var base = location.hostname.endsWith("github.io") && parts[1] ? "/" + parts[1] + "/" : "/";
+      // the shop portal is a separate app under <base>shop/
+      var shopIdx = location.hostname.endsWith("github.io") ? 2 : 1;
+      if (parts[shopIdx] === "shop") base += "shop/";
       location.replace(base);
     </script>
   </head>
