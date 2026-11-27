@@ -52,7 +52,5 @@ writeFileSync(
     2,
   ) + "\n",
 );
-writeFileSync("deploy/.vercelignore", ".env*
-.vercel
-");
-console.log("deploy/ ready → npx vercel deploy --prod --cwd apps/api/deploy");
+writeFileSync("deploy/.vercelignore", ".env*\n.vercel\n");
+console.log("deploy/ ready (deploy a copy outside the repo — see the note at the top)");
