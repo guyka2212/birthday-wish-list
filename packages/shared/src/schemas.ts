@@ -147,7 +147,11 @@ const knownCity = trimmed(2, 40).refine((c) => !!findCity(c), "pick a city from 
 
 export const shopSignupSchema = z.object({
   name: trimmed(2, 60),
-  businessId: z.string().trim().regex(/^\d{8,9}$/, "business ID must be 8–9 digits"),
+  // ח.פ / עוסק מורשה / ת.ז — people often type it with dashes or spaces (51-483920-1), so strip those first
+  businessId: z
+    .string()
+    .transform((s) => s.replace(/[\s\-–.‎‏]/g, ""))
+    .pipe(z.string().regex(/^\d{8,9}$/, "business ID must be 8–9 digits")),
   address: trimmed(5, 200),
   /** must be a known city so kids and buyers can see how close the shop is */
   city: knownCity,

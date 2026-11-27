@@ -15,9 +15,33 @@ const errText = (e: unknown) =>
           : e.status === 401
             ? "מייל או סיסמה שגויים"
             : e.code === "validation_failed"
-              ? "יש שדות לא תקינים: " + ((e.details as Array<{ path: string }> | undefined)?.map((d) => d.path).join(", ") ?? "")
+              ? fieldErrors(e.details)
               : e.message
     : "שגיאה";
+
+/** What to fix, per field, in plain Hebrew (the API returns the field names that failed). */
+const FIELD_HELP: Record<string, string> = {
+  name: "שם החנות: לפחות 2 תווים",
+  businessId: "ח.פ / עוסק מורשה: 9 ספרות (מותר עם מקפים או רווחים), למשל 514839201",
+  address: "כתובת: לפחות 5 תווים",
+  city: "עיר: בחרו עיר מהרשימה",
+  phone: "טלפון: מספר תקין, למשל 04-8123456",
+  contactName: "איש/אשת קשר: לפחות 2 תווים",
+  email: "מייל: כתובת מייל תקינה",
+  password: "סיסמה: לפחות 8 תווים, עם אותיות ומספרים",
+  logoUrl: "קישור ללוגו: קישור מלא שמתחיל ב-https:// (או להשאיר ריק)",
+  pickupInfo: "שעות איסוף: עד 200 תווים",
+  webhookUrl: "Webhook: קישור שמתחיל ב-https://",
+  title: "שם המוצר: חובה",
+  sku: "SKU: אותיות, ספרות, נקודה, מקף או קו תחתון",
+  priceAgorot: "מחיר: מספר חיובי",
+};
+
+function fieldErrors(details: unknown): string {
+  const fields = [...new Set(((details as Array<{ path: string }> | undefined) ?? []).map((d) => d.path.split(".")[0] ?? ""))].filter(Boolean);
+  if (!fields.length) return "חלק מהשדות לא מולאו נכון";
+  return "צריך לתקן: " + fields.map((f) => FIELD_HELP[f] ?? f).join(" · ");
+}
 
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -107,7 +131,7 @@ export function SignupPage() {
     <Shell title="הרשמת חנות חדשה">
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="שם החנות"><input className={inputClass} value={f.name} onChange={set("name")} required /></Field>
-        <Field label="ח.פ / עוסק מורשה" hint="8–9 ספרות"><input className={inputClass} inputMode="numeric" dir="ltr" value={f.businessId} onChange={set("businessId")} required /></Field>
+        <Field label="ח.פ / עוסק מורשה" hint="9 ספרות, אפשר עם מקפים (למשל 51-483920-1)"><input className={inputClass} inputMode="numeric" dir="ltr" value={f.businessId} onChange={set("businessId")} required /></Field>
         <Field label="כתובת"><input className={inputClass} value={f.address} onChange={set("address")} required /></Field>
         <Field label="עיר" hint="בחרו מהרשימה — כך ילדים וקונים יראו כמה החנות קרובה אליהם"><input className={inputClass} list="bwl-cities" value={f.city} onChange={set("city")} required /><datalist id="bwl-cities">{CITIES.map((c) => <option key={c.id} value={c.he} />)}</datalist></Field>
         <Field label="טלפון"><input className={inputClass} dir="ltr" type="tel" value={f.phone} onChange={set("phone")} required /></Field>

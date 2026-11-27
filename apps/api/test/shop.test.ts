@@ -12,7 +12,7 @@ describe("shop portal and stock API", () => {
     const ctx = await setup();
     const signup = await ctx.call("POST", "/auth/shop/signup", {
       name: "חנות הצעצועים",
-      businessId: "514839201",
+      businessId: "51-483920-1", // typed with dashes — stored as 514839201
       address: "הרצל 10, חיפה",
       city: "חיפה",
       phone: "04-8123456",
