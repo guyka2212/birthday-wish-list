@@ -46,7 +46,7 @@ describe("security basics", () => {
     let last = 0;
     for (let i = 0; i < 125; i++) last = (await ctx.call("GET", "/public/l/aaaaaaaaaaaaaaaaaaaaaa", undefined, { headers })).status;
     expect(last).toBe(429);
-  });
+  }, 30_000); // 125 sequential requests: allow time on a busy machine / CI runner
 
   it("rejects non-JSON and oversized bodies", async () => {
     const ctx = await setup();

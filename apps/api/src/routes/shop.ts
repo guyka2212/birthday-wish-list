@@ -473,8 +473,27 @@ shop.patch("/orders/:id", async (c) => {
   if (!o) throw notFound("order");
   if (!NEXT[o.status].includes(status)) throw badRequest("bad_transition", `can't move an order from ${o.status} to ${status}`);
   const ts = now();
+  // a cancelled order is refunded (the buyer paid at checkout)
+  let refund: { receiptId: string; ref: string; amount: number } | null = null;
+  if (status === "cancelled") {
+    const p = await one<{ receipt_id: string; provider_ref: string; total_agorot: number }>(
+      db,
+      `SELECT o.receipt_id, pay.provider_ref, o.total_agorot FROM orders o
+       JOIN payments pay ON pay.receipt_id = o.receipt_id AND pay.status = 'succeeded' WHERE o.id = ? LIMIT 1`,
+      [o.id],
+    );
+    if (p) {
+      await deps.payments.refund(p.provider_ref, Number(p.total_agorot));
+      refund = { receiptId: p.receipt_id, ref: p.provider_ref, amount: Number(p.total_agorot) };
+    }
+  }
   await tx(db, async (t) => {
     await run(t, "UPDATE orders SET status = ?, updated_at = ? WHERE id = ?", [status, ts, o.id]);
+    if (refund) {
+      await run(t, "INSERT INTO payments (id, receipt_id, provider, provider_ref, amount_agorot, status, created_at) VALUES (?,?,?,?,?,'refunded',?)", [
+        newId(), refund.receiptId, deps.payments.name, refund.ref, refund.amount, ts,
+      ]);
+    }
     if (status === "cancelled") {
       // put the gift back on the list and back in stock
       const items = await all<{ list_item_id: string; product_id: string; quantity: number }>(t, "SELECT list_item_id, product_id, quantity FROM order_items WHERE order_id = ?", [o.id]);

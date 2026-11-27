@@ -109,7 +109,7 @@ export function OrdersPage() {
   }
 
   async function move(o: ShopOrder, status: string) {
-    if (status === "cancelled" && !confirm("לבטל את ההזמנה? המתנה תחזור לרשימה ולמלאי.")) return;
+    if (status === "cancelled" && !confirm("לבטל את ההזמנה? הקונה יקבל את הכסף בחזרה, והמתנה תחזור לרשימה ולמלאי.")) return;
     setBusy(o.id);
     setErr(null);
     try {

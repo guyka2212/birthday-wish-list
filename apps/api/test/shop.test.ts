@@ -139,5 +139,8 @@ describe("shop portal and stock API", () => {
     const page = await ctx.call("GET", `/public/l/${slug}`);
     expect(page.json.items[0].state).toBe("available");
     expect(page.json.items[0].product.inStock).toBe(true);
+    // and the buyer is refunded
+    const refunds = (await ctx.deps.db.execute("SELECT amount_agorot FROM payments WHERE status = 'refunded'")).rows;
+    expect(refunds.map((r) => Number(r.amount_agorot))).toEqual([5_000]);
   });
 });
