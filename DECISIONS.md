@@ -32,7 +32,7 @@ Judgment calls made while building, newest at the bottom of each section.
 ## Front ends
 - **Both sites are Vite + React + TypeScript + Tailwind**, sharing tokens and themes from `packages/shared`.
 - **GitHub Pages layout:** guest site at the root (`/birthday-wish-list/`) with clean `/l/<slug>` links through the 404.html SPA fallback, and the shop portal at `/birthday-wish-list/shop/`.
-- **PDF download is generated in the browser** with html2pdf, plus a print stylesheet, because the browser lays out Hebrew RTL text correctly.
+- **PDF download is generated in the browser** with html2canvas-pro + jsPDF (split into A4 pages), plus a print stylesheet, because the browser lays out Hebrew RTL text correctly. (html2pdf.js was replaced: its html2canvas crashes on the oklch/oklab colors Tailwind v4 uses.)
 - **Fonts:** Rubik everywhere, from `@fontsource/rubik` on the web and a bundled TTF (OFL) on Android.
 - **English toggle:** included, since adding a second string table was cheap.
 

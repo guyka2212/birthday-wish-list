@@ -4,6 +4,7 @@ import { formatILS, type ReceiptView } from "@bwl/shared";
 import { api, ApiError } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useTheme } from "../lib/theme";
+import { downloadElementAsPdf } from "../lib/pdf";
 import { Button, LangToggle, Message, Spinner } from "../components/ui";
 
 /** Itemized, printable bill with VAT 17% and a PDF download. */
@@ -17,6 +18,7 @@ export default function BillPage() {
   const [receipt, setReceipt] = useState<ReceiptView | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
   const billRef = useRef<HTMLDivElement>(null);
   useTheme("unicorn");
 
@@ -36,18 +38,12 @@ export default function BillPage() {
   async function downloadPdf() {
     if (!billRef.current || !receipt) return;
     setPdfBusy(true);
+    setPdfError(false);
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      await html2pdf()
-        .set({
-          margin: 10,
-          filename: `order-${receipt.number}.pdf`,
-          image: { type: "jpeg", quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(billRef.current)
-        .save();
+      await downloadElementAsPdf(billRef.current, `order-${receipt.number}.pdf`);
+    } catch (e) {
+      console.error("PDF failed", e);
+      setPdfError(true); // tell the buyer instead of silently doing nothing
     } finally {
       setPdfBusy(false);
     }
@@ -165,6 +161,11 @@ export default function BillPage() {
           📄 {pdfBusy ? t.loading : t.downloadPdf}
         </Button>
       </div>
+      {pdfError && (
+        <p role="alert" className="no-print mt-4 text-center font-bold text-danger">
+          {t.pdfFailed}
+        </p>
+      )}
       <p className="no-print mt-4 text-center text-sm opacity-75">📧 {t.emailSent(receipt.buyerEmailMasked)}</p>
     </div>
   );
