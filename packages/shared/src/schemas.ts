@@ -95,6 +95,8 @@ export const listUpdateSchema = z.object({
   birthday: dateSchema.nullable().optional(),
   themeId: themeIdSchema.optional(),
   quiz: quizAnswersSchema.optional(),
+  /** show the kid's profile photo on this list's gift shop */
+  showPhoto: z.boolean().optional(),
 });
 export const listItemAddSchema = z.object({ productId: idSchema });
 

@@ -61,6 +61,8 @@ export interface ListSummary {
   /** the resolved theme (preset or quiz-generated) */
   theme: Theme;
   quiz: QuizAnswers | null;
+  /** the kid's photo is shown on this list's gift shop */
+  showPhoto: boolean;
   itemCount: number;
   purchasedCount: number;
   share: { slug: string; enabled: boolean; url: string } | null;
@@ -104,6 +106,8 @@ export interface PublicList {
   themeId: ThemeId | "custom";
   /** full theme to render (preset or quiz-generated). Never includes personal data. */
   theme: Theme;
+  /** true when the kid chose to show their photo here (load it from /public/l/:slug/photo) */
+  kidPhoto: boolean;
   daysToBirthday: number | null;
   items: PublicListItem[];
 }

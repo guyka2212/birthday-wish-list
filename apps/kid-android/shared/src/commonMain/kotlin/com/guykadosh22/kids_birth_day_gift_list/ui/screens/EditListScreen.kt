@@ -314,6 +314,14 @@ private fun ShareSheet(list: ListDetail, kidFirstName: String, consentVerified: 
                 }, Modifier.fillMaxWidth(), leading = "📤", height = 60.dp,
             )
             BigButton(s.copyLink, { platform.copyToClipboard(share.url); platform.toast(s.copied) }, Modifier.fillMaxWidth(), kind = ButtonKind.Soft, leading = "📋")
+            // the kid decides, per list, whether guests see their photo
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("🖼️ " + s.showPhotoInShop, style = MaterialTheme.typography.titleSmall)
+                    Text(s.showPhotoInShopHint, style = MaterialTheme.typography.bodySmall, color = BwlColors.InkSoft)
+                }
+                Switch(checked = list.showPhoto, onCheckedChange = { vm.updateDetails(com.guykadosh22.kids_birth_day_gift_list.data.ListUpdate(showPhoto = it)) })
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
                 BigButton(s.newLink, { vm.share(ShareAction.Regenerate) { platform.toast(s.newLinkBody) } }, Modifier.weight(1f), kind = ButtonKind.Soft, loading = busy)
                 BigButton(s.turnOff, { vm.share(ShareAction.Disable) }, Modifier.weight(1f), kind = ButtonKind.Danger, loading = busy)

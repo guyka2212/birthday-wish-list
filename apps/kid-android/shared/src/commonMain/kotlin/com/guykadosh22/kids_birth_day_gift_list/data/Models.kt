@@ -52,6 +52,7 @@ data class ListSummary(
     val themeId: String = "unicorn",
     val theme: ThemeDto? = null,
     val quiz: Map<String, String>? = null,
+    val showPhoto: Boolean = true,
     val itemCount: Int = 0,
     val purchasedCount: Int = 0,
     val share: ShareInfo? = null,
@@ -73,6 +74,7 @@ data class ListDetail(
     val themeId: String = "unicorn",
     val theme: ThemeDto? = null,
     val quiz: Map<String, String>? = null,
+    val showPhoto: Boolean = true,
     val itemCount: Int = 0,
     val purchasedCount: Int = 0,
     val share: ShareInfo? = null,
@@ -149,6 +151,7 @@ data class ListUpdate(
     val birthday: String? = null,
     val themeId: String? = null,
     val quiz: Map<String, String>? = null,
+    val showPhoto: Boolean? = null,
 )
 
 /** A guest-shop theme from the server: a preset or one generated from the quiz. */

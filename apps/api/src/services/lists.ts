@@ -12,6 +12,7 @@ interface ListRow {
   theme_id: ThemeId | "custom";
   quiz_answers: string | null;
   custom_theme: string | null;
+  show_photo: number;
   created_at: number;
   updated_at: number;
   item_count: number;
@@ -21,7 +22,7 @@ interface ListRow {
 }
 
 const LIST_SELECT = `
-  SELECT l.id, l.name, l.description, l.birthday, l.theme_id, l.quiz_answers, l.custom_theme, l.created_at, l.updated_at,
+  SELECT l.id, l.name, l.description, l.birthday, l.theme_id, l.quiz_answers, l.custom_theme, l.show_photo, l.created_at, l.updated_at,
     (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count,
     (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id AND li.status = 'purchased') AS purchased_count,
     sl.slug, sl.enabled AS share_enabled
@@ -53,6 +54,7 @@ function toSummary(r: ListRow, guestBase: string): ListSummary {
     themeId: r.theme_id,
     theme: resolveTheme(r.theme_id, r.custom_theme),
     quiz: r.quiz_answers ? (JSON.parse(r.quiz_answers) as QuizAnswers) : null,
+    showPhoto: !!Number(r.show_photo),
     itemCount: Number(r.item_count),
     purchasedCount: Number(r.purchased_count),
     share: r.slug ? { slug: r.slug, enabled: !!Number(r.share_enabled), url: shareUrl(guestBase, r.slug) } : null,

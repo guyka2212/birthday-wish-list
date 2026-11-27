@@ -41,7 +41,7 @@ export default function BillPage() {
       await html2pdf()
         .set({
           margin: 10,
-          filename: `receipt-${receipt.number}.pdf`,
+          filename: `order-${receipt.number}.pdf`,
           image: { type: "jpeg", quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },

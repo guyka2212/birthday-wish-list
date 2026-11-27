@@ -92,3 +92,40 @@ describe("profile photo", () => {
     expect((await ctx.call("GET", "/kid/me/photo")).status).toBe(401);
   });
 });
+
+describe("kid photo in the gift shop", () => {
+  it("is shown only when the kid has a photo and 'show my photo' is on for the list", async () => {
+    const ctx = await setup();
+    const { productIds } = await seedShop(ctx);
+    const kid = await signupKid(ctx);
+    const t = { token: kid.accessToken };
+    const list = await ctx.call("POST", "/kid/lists", { name: "Party", quiz: answers }, t);
+    expect(list.json.showPhoto).toBe(true); // on by default
+    await ctx.call("POST", `/kid/lists/${list.json.id}/items`, { productId: productIds.TEDDY }, t);
+    const slug = (await ctx.call("POST", `/kid/lists/${list.json.id}/share`, {}, t)).json.share.slug;
+
+    // no photo yet → nothing to show
+    expect((await ctx.call("GET", `/public/l/${slug}`)).json.kidPhoto).toBe(false);
+    expect((await ctx.call("GET", `/public/l/${slug}/photo`)).status).toBe(404);
+
+    await ctx.call("PUT", "/kid/me/photo", { photo: JPEG }, t);
+    expect((await ctx.call("GET", `/public/l/${slug}`)).json.kidPhoto).toBe(true);
+    const res = await ctx.app.request(`/public/l/${slug}/photo`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/jpeg");
+    expect(res.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
+    expect(Buffer.from(await res.arrayBuffer()).toString("base64")).toBe(JPEG);
+    // other API responses stay same-origin
+    expect((await ctx.app.request("/health")).headers.get("cross-origin-resource-policy")).toBe("same-origin");
+
+    // the kid turns it off → hidden again
+    const off = await ctx.call("PATCH", `/kid/lists/${list.json.id}`, { showPhoto: false }, t);
+    expect(off.json.showPhoto).toBe(false);
+    expect((await ctx.call("GET", `/public/l/${slug}`)).json.kidPhoto).toBe(false);
+    expect((await ctx.call("GET", `/public/l/${slug}/photo`)).status).toBe(404);
+    // sharing off → no photo either
+    await ctx.call("PATCH", `/kid/lists/${list.json.id}`, { showPhoto: true }, t);
+    await ctx.call("DELETE", `/kid/lists/${list.json.id}/share`, undefined, t);
+    expect((await ctx.call("GET", `/public/l/${slug}/photo`)).status).toBe(404);
+  });
+});

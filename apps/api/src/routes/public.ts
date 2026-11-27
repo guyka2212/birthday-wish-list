@@ -46,6 +46,8 @@ interface SharedList {
   birthday: string | null;
   theme_id: ThemeId | "custom";
   custom_theme: string | null;
+  show_photo: number;
+  has_photo: number;
   first_name: string;
   user_id: string;
 }
@@ -53,7 +55,7 @@ interface SharedList {
 async function listBySlug(db: Executor, slug: string): Promise<SharedList> {
   const row = await one<SharedList>(
     db,
-    `SELECT l.id AS list_id, l.name, l.description, l.birthday, l.theme_id, l.custom_theme, u.first_name, u.id AS user_id
+    `SELECT l.id AS list_id, l.name, l.description, l.birthday, l.theme_id, l.custom_theme, l.show_photo, (u.photo_enc IS NOT NULL) AS has_photo, u.first_name, u.id AS user_id
      FROM share_links sl
      JOIN lists l ON l.id = sl.list_id AND l.deleted_at IS NULL
      JOIN users u ON u.id = l.user_id AND u.deleted_at IS NULL AND u.consent_status = 'verified'
@@ -109,6 +111,7 @@ pub.get("/l/:slug", async (c) => {
     description: list.description,
     themeId: list.theme_id,
     theme: resolveTheme(list.theme_id, list.custom_theme),
+    kidPhoto: !!Number(list.show_photo) && !!Number(list.has_photo),
     daysToBirthday: daysUntil(list.birthday, ts),
     items: rows.map((r) => {
       const mine = !!r.r_id && !!sessionHash && r.r_session === sessionHash;
@@ -134,6 +137,21 @@ pub.get("/l/:slug", async (c) => {
   };
   c.header("Cache-Control", "no-store");
   return c.json(result);
+});
+
+/** The kid's photo for the shop header — only when the kid turned "show my photo" on for this list. */
+pub.get("/l/:slug/photo", async (c) => {
+  const { db, box } = c.var.deps;
+  const slug = parse(slugSchema, c.req.param("slug"));
+  const list = await listBySlug(db, slug);
+  if (!Number(list.show_photo)) throw notFound("photo");
+  const row = await one<{ photo_enc: string | null }>(db, "SELECT photo_enc FROM users WHERE id = ?", [list.user_id]);
+  if (!row?.photo_enc) throw notFound("photo");
+  const [kind, data] = (await box.decrypt(row.photo_enc)).split(":", 2) as [string, string];
+  c.header("Content-Type", `image/${kind}`);
+  c.header("Cache-Control", "private, max-age=300");
+  c.header("Cross-Origin-Resource-Policy", "cross-origin"); // shown by <img> on the guest site
+  return c.body(Buffer.from(data, "base64"));
 });
 
 /** Hold an item for 15 minutes so two guests can't buy the same gift. */

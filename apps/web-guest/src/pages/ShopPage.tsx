@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CATEGORY_LABELS, CITIES, cityDistanceKm, findCity, formatILS, type PublicList, type PublicListItem } from "@bwl/shared";
-import { api, ApiError, guestSession } from "../lib/api";
+import { api, API_URL, ApiError, guestSession } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useTheme } from "../lib/theme";
 import { Button, Field, inputClass, LangToggle, Message, SkeletonGrid } from "../components/ui";
@@ -134,9 +134,23 @@ export default function ShopPage() {
             <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-bold">🎁 Birthday Wish List</span>
             <LangToggle />
           </div>
-          <div className="mt-4 text-6xl" aria-hidden>
-            {theme.emoji}
-          </div>
+          {list.kidPhoto ? (
+            <div className="relative mt-4 w-fit">
+              <img
+                src={`${API_URL}/public/l/${encodeURIComponent(slug)}/photo`}
+                alt={list.kidFirstName}
+                className="animate-pop size-28 rounded-full border-4 border-white object-cover shadow-xl sm:size-36"
+                onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = "none")}
+              />
+              <span className="absolute -bottom-1 -end-1 flex size-11 items-center justify-center rounded-full bg-t-accent text-2xl shadow-lg" aria-hidden>
+                {theme.emoji}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-4 text-6xl" aria-hidden>
+              {theme.emoji}
+            </div>
+          )}
           <h1 className="text-3xl font-extrabold sm:text-5xl">{t.wishlistOf(list.kidFirstName)}</h1>
           <p className="text-xl font-bold opacity-95">{list.listName}</p>
           {list.description && <p className="max-w-2xl text-lg opacity-90">{list.description}</p>}

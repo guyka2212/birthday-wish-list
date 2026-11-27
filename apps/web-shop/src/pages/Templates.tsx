@@ -20,7 +20,7 @@ const PLACEHOLDER_LABELS: Record<string, string> = {
   items: "רשימת הפריטים",
   total: "סה״כ",
   date: "תאריך ההזמנה",
-  receiptLink: "קישור לקבלה",
+  receiptLink: "קישור לפרטי ההזמנה",
   listLink: "קישור לרשימה",
 };
 

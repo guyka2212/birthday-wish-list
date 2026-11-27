@@ -339,6 +339,10 @@ kid.patch("/lists/:id", async (c) => {
       args.push(v);
     }
   }
+  if (input.showPhoto !== undefined) {
+    sets.push("show_photo = ?");
+    args.push(input.showPhoto ? "1" : "0");
+  }
   const theme = themeColumns(input.quiz, input.themeId, (await loadUser(c.var.deps, c.var.subjectId)).first_name);
   if (theme) {
     for (const [col, v] of Object.entries(theme)) {

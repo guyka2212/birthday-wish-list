@@ -142,6 +142,8 @@ data class Strings(
     val cityRequired: String,
     val kmAway: (Int) -> String,
     val addCityTitle: String,
+    val showPhotoInShop: String,
+    val showPhotoInShopHint: String,
 )
 
 val HebrewStrings = Strings(
@@ -179,12 +181,13 @@ val HebrewStrings = Strings(
     currentPassword = "סיסמה נוכחית", newPassword = "סיסמה חדשה", profileSaved = "נשמר! ✔", parentPending = "ממתין לאישור הורה", parentOk = "הורה אישר ✔",
     categoryNames = mapOf("toys" to "צעצועים", "books" to "ספרים", "lego" to "לגו", "sports" to "ספורט", "art" to "יצירה", "games" to "משחקים", "other" to "אחר"),
     notifTitle = "מישהו קנה לך מתנה! 🎁",
-    photoTitle = "בוא/י נוסיף תמונה שלך!", photoPrivacy = "התמונה נשמרת רק באפליקציה ולא מוצגת בקישור לאורחים.",
+    photoTitle = "בוא/י נוסיף תמונה שלך!", photoPrivacy = "התמונה תופיע בראש חנות המתנות שלך — אפשר לכבות את זה בכל רשימה.",
     takePhoto = "לצלם עכשיו", fromGallery = "מהגלריה", removePhoto = "להסיר תמונה", orCharacter = "או לבחור דמות", photoUploadFailed = "לא הצלחנו לשמור את התמונה, אפשר לנסות שוב בפרופיל",
     quizTitle = "בונים את החנות שלך! 🎨", quizSubtitle = "עונים על 6 שאלות קטנות ואנחנו ניצור לחנות המתנות עיצוב שהוא רק שלך", quizStart = "להתחיל את החידון ✨",
     quizStep = { i, n -> "שאלה $i מתוך $n" }, quizBack = "חזרה", quizRedo = "לענות שוב", quizDone = "החנות שלך מוכנה!", quizNeeded = "צריך לענות על החידון כדי ליצור את העיצוב", yourTheme = "העיצוב שלך",
     city = "באיזו עיר את/ה גר/ה?", cityHint = "נראה לך רק חנויות שקרובות אלייך", searchCity = "חיפוש עיר", cityRequired = "צריך לבחור עיר",
     kmAway = { if (it < 1) "בעיר שלך" else "$it ק״מ ממך" }, addCityTitle = "📍 בחרו עיר בפרופיל כדי לראות חנויות קרובות",
+    showPhotoInShop = "להציג את התמונה שלי בחנות", showPhotoInShopHint = "האורחים יראו את התמונה שלך בראש חנות המתנות",
 )
 
 val EnglishStrings = Strings(
@@ -222,12 +225,13 @@ val EnglishStrings = Strings(
     currentPassword = "Current password", newPassword = "New password", profileSaved = "Saved! ✔", parentPending = "Waiting for parent approval", parentOk = "Parent approved ✔",
     categoryNames = mapOf("toys" to "Toys", "books" to "Books", "lego" to "Lego", "sports" to "Sports", "art" to "Art", "games" to "Games", "other" to "Other"),
     notifTitle = "Someone bought you a gift! 🎁",
-    photoTitle = "Let's add your picture!", photoPrivacy = "Your photo stays in the app and is never shown on the guest link.",
+    photoTitle = "Let's add your picture!", photoPrivacy = "Your photo appears at the top of your gift shop — you can turn that off for any list.",
     takePhoto = "Take a photo", fromGallery = "From gallery", removePhoto = "Remove photo", orCharacter = "or pick a character", photoUploadFailed = "We couldn't save your photo — try again in Profile",
     quizTitle = "Let's build your shop! 🎨", quizSubtitle = "Answer 6 quick questions and we'll create a gift-shop theme that's only yours", quizStart = "Start the quiz ✨",
     quizStep = { i, n -> "Question $i of $n" }, quizBack = "Back", quizRedo = "Answer again", quizDone = "Your shop is ready!", quizNeeded = "Answer the quiz to create your theme", yourTheme = "Your theme",
     city = "Which city do you live in?", cityHint = "We'll only show shops near you", searchCity = "Search city", cityRequired = "Please choose a city",
     kmAway = { if (it < 1) "In your city" else "$it km away" }, addCityTitle = "📍 Choose your city in Profile to see nearby shops",
+    showPhotoInShop = "Show my photo in the shop", showPhotoInShopHint = "Guests will see your photo at the top of your gift shop",
 )
 
 val CategoryEmoji = mapOf("toys" to "🧸", "books" to "📚", "lego" to "🧱", "sports" to "⚽", "art" to "🎨", "games" to "🎲", "other" to "🎁")

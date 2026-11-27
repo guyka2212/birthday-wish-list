@@ -54,11 +54,11 @@ export function receiptEmail(r: ReceiptView, billUrl: string) {
     )
     .join("");
   return {
-    subject: `קבלה ${r.number} · מתנה ל${r.kidFirstName} 🎁`,
+    subject: `פרטי ההזמנה ${r.number} · מתנה ל${r.kidFirstName} 🎁`,
     html: layout(
-      "קבלה",
+      "פרטי ההזמנה",
       `<h2 style="margin-top:0">תודה ${esc(r.buyerName)}! 🎉</h2>
-<p>ההזמנה של המתנה ל<b>${esc(r.kidFirstName)}</b> התקבלה! 🛍️ שלחנו אותה לחנות כדי לבדוק שהיא במלאי ולשמור אותה בצד בשבילך — החנות תעדכן אותך במייל.</p><p>הנה עותק של הקבלה:</p>
+<p>ההזמנה של המתנה ל<b>${esc(r.kidFirstName)}</b> התקבלה! 🛍️ שלחנו אותה לחנות כדי לבדוק שהיא במלאי ולשמור אותה בצד בשבילך — החנות תעדכן אותך במייל.</p><p>הנה פרטי ההזמנה:</p>
 <p><b>מספר הזמנה:</b> ${esc(r.number)}<br><b>תאריך:</b> ${new Date(r.createdAt).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}</p>
 <table style="width:100%;border-collapse:collapse;font-size:15px">${rows}
 <tr><td colspan="2"><hr style="border:none;border-top:1px solid #E3ECF7"></td></tr>
@@ -67,7 +67,7 @@ export function receiptEmail(r: ReceiptView, billUrl: string) {
 <tr><td><b>סה״כ לתשלום</b></td><td style="text-align:left"><b>${formatILS(r.totalAgorot)}</b></td></tr></table>
 ${r.greeting ? `<p style="background:#FFF7DD;border-radius:12px;padding:12px"><b>הברכה שלך:</b><br>${esc(r.greeting)}</p>` : ""}
 <p><b>איסוף/משלוח:</b> ${r.deliveryMethod === "pickup" ? "איסוף מהחנות" : "משלוח"}</p>
-${button(billUrl, "לצפייה בקבלה והורדת PDF")}`,
+${button(billUrl, "לצפייה בפרטי ההזמנה והורדת PDF")}`,
     ),
   };
 }

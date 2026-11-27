@@ -36,8 +36,13 @@ export function createApp(deps: Deps) {
       strictTransportSecurity: "max-age=63072000; includeSubDomains; preload",
       contentSecurityPolicy: { defaultSrc: ["'none'"], styleSrc: ["'unsafe-inline'"], frameAncestors: ["'none'"] },
       referrerPolicy: "no-referrer",
+      crossOriginResourcePolicy: false, // set below, so the public kid photo can be shown on the guest site
     }),
   );
+  app.use("*", async (c, next) => {
+    await next();
+    if (!c.res.headers.has("Cross-Origin-Resource-Policy")) c.header("Cross-Origin-Resource-Policy", "same-origin");
+  });
 
   // Browsers: only the known front-end origins. (The Android app and server-to-server API calls send no Origin.)
   app.use(

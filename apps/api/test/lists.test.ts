@@ -73,7 +73,7 @@ describe("lists, catalog and sharing", () => {
     expect(text).not.toContain("Noa the Great"); // username
     expect(text).not.toContain("2016"); // birth year / age
     expect(text).not.toContain("mom@example.com");
-    expect(Object.keys(r.json).sort()).toEqual(["daysToBirthday", "description", "items", "kidFirstName", "listName", "theme", "themeId"]);
+    expect(Object.keys(r.json).sort()).toEqual(["daysToBirthday", "description", "items", "kidFirstName", "kidPhoto", "listName", "theme", "themeId"]);
   });
 
   it("regenerating the link kills the old URL; turning sharing off hides the page", async () => {
