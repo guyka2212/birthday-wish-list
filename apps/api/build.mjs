@@ -2,7 +2,8 @@
 //   deploy/api/index.mjs  – the bundled function (workspace code like @bwl/shared inlined)
 //   deploy/package.json   – only the runtime deps esbuild leaves external (Vercel installs Linux binaries)
 //   deploy/vercel.json    – routes every path to the function
-// Deploy with:  npx vercel deploy --prod --cwd apps/api/deploy
+// Deploy with:  npx vercel deploy --prod --cwd <a copy of apps/api/deploy outside the git repo>
+// (from inside the repo Vercel attaches git metadata and may refuse commits by non-team authors).
 import { build } from "esbuild";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -51,4 +52,7 @@ writeFileSync(
     2,
   ) + "\n",
 );
+writeFileSync("deploy/.vercelignore", ".env*
+.vercel
+");
 console.log("deploy/ ready → npx vercel deploy --prod --cwd apps/api/deploy");

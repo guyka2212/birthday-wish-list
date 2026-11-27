@@ -26,7 +26,7 @@ dependencies {
 // Release builds talk to the deployed API (override with -Pbwl.apiUrl=https://... or BWL_API_URL env).
 val releaseApiUrl: String = (findProperty("bwl.apiUrl") as String?)?.takeIf { it.isNotBlank() }
     ?: System.getenv("BWL_API_URL")?.takeIf { it.isNotBlank() }
-    ?: "https://birthday-wish-list-api.vercel.app"
+    ?: "https://birthday-wish-list-api.vercel.app" // live API (also set as the API_URL repo variable)
 
 android {
     namespace = "com.guykadosh22.kids_birth_day_gift_list"

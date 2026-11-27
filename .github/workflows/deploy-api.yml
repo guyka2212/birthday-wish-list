@@ -29,7 +29,9 @@ jobs:
         run: |
           npm ci
           npm run build -w @bwl/api
-          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" --cwd apps/api/deploy
+          # deploy from a copy outside the repo so Vercel does not attach git metadata (commit-author checks)
+          cp -r apps/api/deploy "$RUNNER_TEMP/api-deploy"
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" --cwd "$RUNNER_TEMP/api-deploy"
       - name: Skipped
         if: env.VERCEL_TOKEN == ''
         run: echo "No VERCEL_TOKEN secret set — skipping API deploy."
