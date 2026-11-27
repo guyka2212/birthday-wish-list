@@ -28,6 +28,11 @@ const schema = z.object({
     .optional()
     .transform((v) => v === "true"),
   RESEND_API_KEY: z.string().optional(),
+  // SMTP (e.g. Gmail + App Password). When SMTP_USER and SMTP_PASS are set, real emails are sent this way.
+  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().default("Birthday Wish List <onboarding@resend.dev>"),
 });
 

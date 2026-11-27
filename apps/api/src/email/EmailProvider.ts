@@ -1,3 +1,4 @@
+import nodemailer, { type Transporter } from "nodemailer";
 import type { Executor } from "../db";
 import { run } from "../db";
 import { maskEmail, newId, type CryptoBox } from "../lib/crypto";
@@ -41,6 +42,41 @@ export class ResendProvider implements EmailProvider {
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "send failed" };
+    }
+  }
+}
+
+/**
+ * Real email over SMTP — e.g. a Gmail account with an App Password (smtp.gmail.com:465).
+ * Works without owning a domain; Gmail allows ~500 messages/day, plenty for a pilot.
+ */
+export class SmtpProvider implements EmailProvider {
+  readonly name = "smtp";
+  private transport: Transporter;
+  constructor(
+    host: string,
+    port: number,
+    user: string,
+    pass: string,
+    private from: string,
+  ) {
+    this.transport = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+    });
+  }
+  async send(msg: EmailMessage) {
+    try {
+      await this.transport.sendMail({ from: this.from, to: msg.to, subject: msg.subject, html: msg.html });
+      return { ok: true };
+    } catch (e) {
+      // never log the recipient or credentials — just the reason
+      return { ok: false, error: e instanceof Error ? e.message.slice(0, 200) : "smtp send failed" };
     }
   }
 }

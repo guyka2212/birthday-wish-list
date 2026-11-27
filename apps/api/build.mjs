@@ -7,7 +7,7 @@
 import { build } from "esbuild";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-const external = ["@node-rs/argon2", "@libsql/client"];
+const external = ["@node-rs/argon2", "@libsql/client", "nodemailer"];
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
 mkdirSync("deploy/api", { recursive: true });

@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "types": ["node"], "lib": ["ES2023", "DOM"] },
-  "include": ["src", "test", "../../scripts/*.ts", "../../db/seed/*.ts"]
+  "include": ["src", "test", "vitest.config.ts", "../../scripts/*.ts", "../../db/seed/*.ts"]
 }
