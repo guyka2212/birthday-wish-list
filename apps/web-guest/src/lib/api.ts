@@ -1,6 +1,6 @@
 import type { CheckoutInput, CheckoutResult, PublicList, ReceiptView, ReservationView } from "@bwl/shared";
 
-export const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://localhost:4000";
+export const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) || "http://localhost:4000").replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(
@@ -26,7 +26,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "network", "network error");
   }
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+  let json: { error?: { code?: string; message?: string; details?: unknown } } | null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    throw new ApiError(0, "network", "unexpected response from server");
+  }
   if (!res.ok) throw new ApiError(res.status, json?.error?.code ?? "http_error", json?.error?.message ?? res.statusText, json?.error?.details);
   return json as T;
 }
