@@ -12,6 +12,7 @@ import { shop, shopAuth } from "./routes/shop";
 import { shopApi } from "./routes/shopApi";
 import { admin, adminAuth } from "./routes/admin";
 import { openApiSpec } from "./openapi";
+import { health } from "./routes/health";
 import { CITIES, THEMES } from "@bwl/shared";
 
 export function createApp(deps: Deps) {
@@ -57,10 +58,7 @@ export function createApp(deps: Deps) {
   app.use("*", bodyLimit({ maxSize: 512 * 1024, onError: (c) => c.json({ error: { code: "too_large", message: "request body too large" } }, 413) }));
 
   app.get("/", (c) => c.json({ name: "Birthday Wish List API", docs: "/openapi.json", health: "/health" }));
-  app.get("/health", async (c) => {
-    await deps.db.execute("SELECT 1");
-    return c.json({ ok: true, time: deps.now() });
-  });
+  app.route("/health", health); // pretty status page; /health/json for monitors
   app.get("/openapi.json", (c) => c.json(openApiSpec(deps.config.API_PUBLIC_URL)));
   app.get("/themes", (c) => c.json({ items: Object.values(THEMES) }));
   // public: the cities a kid can pick at sign-up (no coordinates needed by clients)

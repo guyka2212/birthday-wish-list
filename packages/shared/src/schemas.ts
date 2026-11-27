@@ -125,7 +125,13 @@ export const catalogQuerySchema = z.object({
 
 // ---------- guest ----------
 export const guestSessionSchema = z.string().regex(/^[A-Za-z0-9_-]{24,64}$/);
-export const reserveSchema = z.object({ slug: slugSchema, listItemId: idSchema, guestSession: guestSessionSchema });
+export const reserveSchema = z.object({
+  slug: slugSchema,
+  listItemId: idSchema,
+  guestSession: guestSessionSchema,
+  /** buy the same product at another branch of the same shop (e.g. the one closest to the buyer) */
+  productId: idSchema.optional(),
+});
 export const releaseSchema = z.object({ reservationId: idSchema, guestSession: guestSessionSchema });
 export const checkoutSchema = z
   .object({

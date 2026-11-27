@@ -132,3 +132,88 @@ admin.get("/stats", async (c) => {
     salesAgorot: await q("SELECT COALESCE(SUM(total_agorot),0) AS n FROM orders WHERE status != 'cancelled'"),
   });
 });
+
+/** Per-shop sales and activity for the admin dashboard (money stays admin-only; never on /health). */
+admin.get("/shop-stats", async (c) => {
+  const { db, now } = c.var.deps;
+  const days = Math.min(Math.max(Number(c.req.query("days") ?? 30) || 30, 1), 365);
+  const since = now() - days * 86_400_000;
+  const shops = await all<{
+    id: string; name: string; city: string; status: string; chain: string | null; products: number; in_stock: number;
+    orders: number; sales: number; cancelled: number; waiting: number; ready: number; done: number; last_order: number | null; sales_period: number; orders_period: number;
+  }>(
+    db,
+    `SELECT sh.id, sh.name, sh.city, sh.status, sh.business_id_hash AS chain,
+       (SELECT COUNT(*) FROM products p WHERE p.shop_id = sh.id AND p.active = 1) AS products,
+       (SELECT COUNT(*) FROM products p JOIN stock s ON s.product_id = p.id WHERE p.shop_id = sh.id AND p.active = 1 AND s.quantity > 0) AS in_stock,
+       COUNT(o.id) AS orders,
+       COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total_agorot END), 0) AS sales,
+       COALESCE(SUM(o.status = 'cancelled'), 0) AS cancelled,
+       COALESCE(SUM(o.status = 'new'), 0) AS waiting,
+       COALESCE(SUM(o.status = 'ready'), 0) AS ready,
+       COALESCE(SUM(o.status = 'done'), 0) AS done,
+       MAX(o.created_at) AS last_order,
+       COALESCE(SUM(CASE WHEN o.status != 'cancelled' AND o.created_at > ? THEN o.total_agorot END), 0) AS sales_period,
+       COALESCE(SUM(o.created_at > ?), 0) AS orders_period
+     FROM shops sh LEFT JOIN orders o ON o.shop_id = sh.id
+     GROUP BY sh.id ORDER BY sales DESC, sh.name`,
+    [since, since],
+  );
+  // label branches of the same chain (same business ID) so the admin can see them together
+  const chainSize = new Map<string, number>();
+  for (const s of shops) if (s.chain) chainSize.set(s.chain, (chainSize.get(s.chain) ?? 0) + 1);
+  const chainNo = new Map<string, number>();
+  for (const s of shops) if (s.chain && (chainSize.get(s.chain) ?? 0) > 1 && !chainNo.has(s.chain)) chainNo.set(s.chain, chainNo.size + 1);
+
+  const byDay = await all<{ day: string; orders: number; sales: number }>(
+    db,
+    `SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS day, COUNT(*) AS orders,
+            COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total_agorot END), 0) AS sales
+     FROM orders WHERE created_at > ? GROUP BY day ORDER BY day`,
+    [since],
+  );
+  const top = await all<{ title: string; shop: string; sold: number; sales: number }>(
+    db,
+    `SELECT oi.title_snapshot AS title, sh.name AS shop, SUM(oi.quantity) AS sold, SUM(oi.price_agorot * oi.quantity) AS sales
+     FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN shops sh ON sh.id = o.shop_id
+     WHERE o.status != 'cancelled' AND o.created_at > ?
+     GROUP BY oi.title_snapshot, sh.id ORDER BY sold DESC, sales DESC LIMIT 10`,
+    [since],
+  );
+  const items = shops.map((s) => ({
+    id: s.id,
+    name: s.name,
+    city: s.city,
+    status: s.status,
+    chainNo: s.chain ? chainNo.get(s.chain) ?? null : null,
+    products: Number(s.products),
+    inStock: Number(s.in_stock),
+    orders: Number(s.orders),
+    salesAgorot: Number(s.sales),
+    cancelled: Number(s.cancelled),
+    waitingForStock: Number(s.waiting),
+    ready: Number(s.ready),
+    done: Number(s.done),
+    lastOrderAt: s.last_order == null ? null : Number(s.last_order),
+    periodSalesAgorot: Number(s.sales_period),
+    periodOrders: Number(s.orders_period),
+  }));
+  const sum = (k: "orders" | "salesAgorot" | "cancelled" | "waitingForStock" | "periodSalesAgorot" | "periodOrders") => items.reduce((a, s) => a + s[k], 0);
+  const completed = sum("orders") - sum("cancelled");
+  return c.json({
+    days,
+    totals: {
+      shops: items.length,
+      orders: sum("orders"),
+      salesAgorot: sum("salesAgorot"),
+      cancelled: sum("cancelled"),
+      waitingForStock: sum("waitingForStock"),
+      periodOrders: sum("periodOrders"),
+      periodSalesAgorot: sum("periodSalesAgorot"),
+      avgOrderAgorot: completed > 0 ? Math.round(sum("salesAgorot") / completed) : 0,
+    },
+    shops: items,
+    byDay: byDay.map((d) => ({ day: d.day, orders: Number(d.orders), salesAgorot: Number(d.sales) })),
+    topProducts: top.map((t) => ({ title: t.title, shop: t.shop, sold: Number(t.sold), salesAgorot: Number(t.sales) })),
+  });
+});

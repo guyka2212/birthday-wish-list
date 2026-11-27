@@ -116,6 +116,8 @@ export interface PublicListItem {
   id: string;
   state: "available" | "held" | "held_by_you" | "purchased";
   heldUntil: number | null;
+  /** when held by you at another branch: that branch's product id */
+  heldProductId: string | null;
   reservationId: string | null;
   product: {
     id: string;
@@ -126,6 +128,8 @@ export interface PublicListItem {
     imageUrl: string | null;
     inStock: boolean;
     shop: { name: string; city: string; logoUrl: string | null };
+    /** the same product (same SKU) at other branches of this shop — the buyer can pick the closest */
+    branches: Array<{ productId: string; priceAgorot: number; inStock: boolean; shop: { name: string; city: string } }>;
   };
 }
 
@@ -254,4 +258,18 @@ export interface OutboxRow {
   status: string;
   createdAt: number;
   html: string;
+}
+
+export interface AdminShopStats {
+  days: number;
+  totals: { shops: number; orders: number; salesAgorot: number; cancelled: number; waitingForStock: number; periodOrders: number; periodSalesAgorot: number; avgOrderAgorot: number };
+  shops: Array<{
+    id: string; name: string; city: string; status: string;
+    /** branches of one chain (same business ID) share a number; null = single shop */
+    chainNo: number | null;
+    products: number; inStock: number; orders: number; salesAgorot: number; cancelled: number; waitingForStock: number; ready: number; done: number;
+    lastOrderAt: number | null; periodSalesAgorot: number; periodOrders: number;
+  }>;
+  byDay: Array<{ day: string; orders: number; salesAgorot: number }>;
+  topProducts: Array<{ title: string; shop: string; sold: number; salesAgorot: number }>;
 }

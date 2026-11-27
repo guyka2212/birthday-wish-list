@@ -1,5 +1,6 @@
 import type {
   AdminShopRow,
+  AdminShopStats,
   AuthTokens,
   EmailTemplate,
   OutboxRow,
@@ -135,6 +136,7 @@ export const adminApi = {
   decide: (id: string, decision: "approve" | "reject" | "suspend") => call("admin", `/admin/shops/${id}/decision`, { method: "POST", ...body({ decision }) }),
   outbox: () => call<{ items: OutboxRow[] }>("admin", "/admin/outbox").then((r) => r.items),
   stats: () => call<Record<string, number>>("admin", "/admin/stats"),
+  shopStats: (days: number) => call<AdminShopStats>("admin", `/admin/shop-stats?days=${days}`),
   templates: () => call<{ items: EmailTemplate[]; placeholders: string[] }>("admin", "/admin/templates"),
   saveTemplate: (key: string, t: { subject: string; body: string }) => call<EmailTemplate>("admin", `/admin/templates/${key}`, { method: "PUT", ...body(t) }),
   previewTemplate: (t: { subject: string; body: string }) => call<{ subject: string; html: string }>("admin", "/admin/templates/preview", { method: "POST", ...body(t) }),

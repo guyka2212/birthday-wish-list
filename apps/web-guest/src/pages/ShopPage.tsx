@@ -60,12 +60,14 @@ export default function ShopPage() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  const cart = state.kind === "ready" ? state.list.items.filter((i) => i.state === "held_by_you") : [];
+  // each gift is shown (and bought) at the branch of its shop that is closest to the buyer
+  const viewItems = state.kind === "ready" ? state.list.items.map((i) => atClosestBranch(i, buyerCity)) : [];
+  const cart = viewItems.filter((i) => i.state === "held_by_you");
 
-  async function buy(item: PublicListItem) {
+  async function buy(item: ViewItem) {
     setBusyItem(item.id);
     try {
-      await api.reserve(slug, item.id, session);
+      await api.reserve(slug, item.id, session, item.branchId);
       await load(true);
       setCartOpen(true);
     } catch (e) {
@@ -106,7 +108,7 @@ export default function ShopPage() {
   const list = state.list;
   const dist = (i: PublicListItem) => (buyerCity ? cityDistanceKm(buyerCity, i.product.shop.city) : null);
   // nearest shops first (bought gifts last); remember the closest available one for the badge
-  const items = [...list.items].sort((a, b) => {
+  const items = [...viewItems].sort((a, b) => {
     const pa = a.state === "purchased" ? 1 : 0;
     const pb = b.state === "purchased" ? 1 : 0;
     if (pa !== pb) return pa - pb;
@@ -245,7 +247,31 @@ function CityBar({ city, open, onOpen, onChoose, onSkip }: { city: string | null
   );
 }
 
-function ProductCard({ item, index, busy, km, closest, onBuy, onOpenCart }: { item: PublicListItem; index: number; busy: boolean; km: number | null; closest: boolean; onBuy: () => void; onOpenCart: () => void }) {
+type ViewItem = PublicListItem & { branchId: string | null };
+
+/**
+ * Pick which branch to show a gift at: the one the buyer already holds it at, otherwise the closest
+ * in-stock branch of the same shop chain (the kid's original shop wins ties and when no city is set).
+ */
+function atClosestBranch(item: PublicListItem, buyerCity: string | null): ViewItem {
+  const p = item.product;
+  const branches = p.branches ?? [];
+  if (!branches.length) return { ...item, branchId: null };
+  const options = [{ productId: null as string | null, priceAgorot: p.priceAgorot, inStock: p.inStock, shop: { name: p.shop.name, city: p.shop.city } }, ...branches];
+  let chosen = options[0]!;
+  if (item.state === "held_by_you") chosen = options.find((o) => o.productId === item.heldProductId) ?? options[0]!;
+  else if (item.state === "available") {
+    const d = (o: (typeof options)[number]) => (buyerCity ? cityDistanceKm(buyerCity, o.shop.city) ?? 1e9 : 0);
+    chosen = [...options].sort((a, b) => Number(b.inStock) - Number(a.inStock) || d(a) - d(b))[0]!;
+  }
+  return {
+    ...item,
+    branchId: chosen.productId,
+    product: { ...p, priceAgorot: chosen.priceAgorot, inStock: chosen.inStock, shop: { ...p.shop, name: chosen.shop.name, city: chosen.shop.city } },
+  };
+}
+
+function ProductCard({ item, index, busy, km, closest, onBuy, onOpenCart }: { item: ViewItem; index: number; busy: boolean; km: number | null; closest: boolean; onBuy: () => void; onOpenCart: () => void }) {
   const { t, lang } = useI18n();
   const p = item.product;
   const unavailable = item.state === "purchased" || item.state === "held" || !p.inStock;
@@ -273,6 +299,7 @@ function ProductCard({ item, index, busy, km, closest, onBuy, onOpenCart }: { it
         <p className="text-sm opacity-75">{t.shopBy(p.shop.name, p.shop.city)}</p>
         {km != null && <p className="text-sm font-bold">📍 {t.kmFromYou(km)}</p>}
         {closest && <span className="w-fit rounded-full bg-t-accent px-3 py-1 text-xs font-extrabold text-t-on-accent">{t.closest}</span>}
+        {item.branchId && <span className="w-fit rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-ink">🏬 {t.nearBranch}</span>}
         <p className="mt-auto pt-2 text-2xl font-extrabold">{formatILS(p.priceAgorot, lang)}</p>
         {item.state === "held_by_you" ? (
           <Button variant="primary" onClick={onOpenCart}>

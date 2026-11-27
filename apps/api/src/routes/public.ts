@@ -17,10 +17,12 @@ import type { Executor } from "../db";
 import { all, one, placeholders, run, tx } from "../db";
 import { audit } from "../lib/audit";
 import { newId, randomBase62, randomToken, sha256Hex } from "../lib/crypto";
-import { ApiError, conflict, notFound, unauthorized } from "../lib/errors";
+import { ApiError, badRequest, conflict, notFound, unauthorized } from "../lib/errors";
 import { enforce, ipHash } from "../lib/rateLimit";
 import { body, parse } from "../lib/validate";
 import { daysUntil, resolveTheme } from "../services/lists";
+import { backfillChainKeys } from "../services/nearby";
+import type { CryptoBox } from "../lib/crypto";
 import { notify, sendWebhook } from "../services/notify";
 import { buildReceipt } from "../services/receipts";
 import { orderNewEmail, receiptEmail } from "../email/templates";
@@ -67,8 +69,32 @@ async function listBySlug(db: Executor, slug: string): Promise<SharedList> {
   return row;
 }
 
+/** Same product (same SKU) at the other approved branches of the same shop chain (same business ID). */
+async function branchesFor(db: Executor, box: CryptoBox, productIds: string[]) {
+  const out = new Map<string, PublicListItem["product"]["branches"]>();
+  if (!productIds.length) return out;
+  await backfillChainKeys(db, box);
+  const rows = await all<{ base: string; id: string; price: number; stock: number; name: string; city: string }>(
+    db,
+    `SELECT p.id AS base, p2.id, p2.price_agorot AS price, COALESCE(s2.quantity, 0) AS stock, sh2.name, sh2.city
+     FROM products p
+     JOIN shops sh ON sh.id = p.shop_id
+     JOIN shops sh2 ON sh2.business_id_hash = sh.business_id_hash AND sh2.id != sh.id AND sh2.status = 'approved'
+     JOIN products p2 ON p2.shop_id = sh2.id AND p2.external_sku = p.external_sku AND p2.active = 1
+     LEFT JOIN stock s2 ON s2.product_id = p2.id
+     WHERE p.id IN (${placeholders(productIds.length)}) AND sh.business_id_hash IS NOT NULL`,
+    productIds,
+  );
+  for (const r of rows) {
+    const list = out.get(r.base) ?? [];
+    list.push({ productId: r.id, priceAgorot: Number(r.price), inStock: Number(r.stock) > 0, shop: { name: r.name, city: r.city } });
+    out.set(r.base, list);
+  }
+  return out;
+}
+
 pub.get("/l/:slug", async (c) => {
-  const { db, now } = c.var.deps;
+  const { db, box, now } = c.var.deps;
   const slug = parse(slugSchema, c.req.param("slug"));
   const session = c.req.query("session");
   const sessionHash = session && guestSessionSchema.safeParse(session).success ? await sha256Hex(session) : null;
@@ -91,11 +117,12 @@ pub.get("/l/:slug", async (c) => {
     r_id: string | null;
     r_expires: number | null;
     r_session: string | null;
+    r_product: string | null;
   }>(
     db,
     `SELECT li.id AS li_id, li.status AS li_status, p.id AS p_id, p.title, p.description, p.category, p.price_agorot, p.image_url,
             COALESCE(s.quantity, 0) AS stock, sh.name AS shop_name, sh.city, sh.logo_url,
-            r.id AS r_id, r.expires_at AS r_expires, r.guest_session_hash AS r_session
+            r.id AS r_id, r.expires_at AS r_expires, r.guest_session_hash AS r_session, r.product_id AS r_product
      FROM list_items li
      JOIN products p ON p.id = li.product_id
      JOIN shops sh ON sh.id = p.shop_id
@@ -105,6 +132,7 @@ pub.get("/l/:slug", async (c) => {
      ORDER BY li.status = 'purchased', li.created_at`,
     [list.list_id],
   );
+  const branches = await branchesFor(db, box, rows.map((r) => r.p_id));
   const result: PublicList = {
     kidFirstName: list.first_name,
     listName: list.name,
@@ -122,6 +150,7 @@ pub.get("/l/:slug", async (c) => {
         state,
         heldUntil: r.r_id ? Number(r.r_expires) : null,
         reservationId: mine ? r.r_id : null,
+        heldProductId: mine && r.r_product && r.r_product !== r.p_id ? r.r_product : null,
         product: {
           id: r.p_id,
           title: r.title,
@@ -131,6 +160,7 @@ pub.get("/l/:slug", async (c) => {
           imageUrl: r.image_url,
           inStock: Number(r.stock) > 0,
           shop: { name: r.shop_name, city: r.city, logoUrl: r.logo_url },
+          branches: branches.get(r.p_id) ?? [],
         },
       };
     }),
@@ -156,21 +186,30 @@ pub.get("/l/:slug/photo", async (c) => {
 
 /** Hold an item for 15 minutes so two guests can't buy the same gift. */
 pub.post("/reservations", async (c) => {
-  const { db, now } = c.var.deps;
+  const { db, box, now } = c.var.deps;
   await enforce(c, "reserve", 20, 10 * 60_000);
   const input = await body(c, reserveSchema);
   const ts = now();
   await sweepExpired(db, ts);
   const list = await listBySlug(db, input.slug);
-  const item = await one<{ id: string; status: string; stock: number }>(
+  const item = await one<{ id: string; status: string; stock: number; product_id: string }>(
     db,
-    `SELECT li.id, li.status, COALESCE(s.quantity,0) AS stock FROM list_items li
+    `SELECT li.id, li.status, li.product_id, COALESCE(s.quantity,0) AS stock FROM list_items li
      LEFT JOIN stock s ON s.product_id = li.product_id WHERE li.id = ? AND li.list_id = ?`,
     [input.listItemId, list.list_id],
   );
   if (!item) throw notFound("gift");
   if (item.status === "purchased") throw conflict("already_purchased", "this gift was already bought");
-  if (Number(item.stock) <= 0) throw conflict("out_of_stock", "this gift is out of stock right now");
+  // optional: the same product at another branch of the same shop (closest to the buyer)
+  let branchProduct: string | null = null;
+  if (input.productId && input.productId !== item.product_id) {
+    const branch = (await branchesFor(db, box, [item.product_id])).get(item.product_id)?.find((b) => b.productId === input.productId);
+    if (!branch) throw badRequest("bad_branch", "that branch doesn't carry this gift");
+    if (!branch.inStock) throw conflict("out_of_stock", "this gift is out of stock at that branch");
+    branchProduct = branch.productId;
+  } else if (Number(item.stock) <= 0) {
+    throw conflict("out_of_stock", "this gift is out of stock right now");
+  }
 
   const sessionHash = await sha256Hex(input.guestSession);
   const existing = await one<{ id: string; guest_session_hash: string; expires_at: number }>(
@@ -182,18 +221,19 @@ pub.post("/reservations", async (c) => {
     if (existing.guest_session_hash !== sessionHash) {
       throw conflict("already_held", "someone else is buying this gift right now", { heldUntil: Number(existing.expires_at) });
     }
-    // same guest: extend the hold
-    await run(db, "UPDATE reservations SET expires_at = ? WHERE id = ?", [ts + HOLD_MS, existing.id]);
+    // same guest: extend the hold (and switch branch if they picked another one)
+    await run(db, "UPDATE reservations SET expires_at = ?, product_id = ? WHERE id = ?", [ts + HOLD_MS, branchProduct, existing.id]);
     return c.json({ id: existing.id, listItemId: item.id, expiresAt: ts + HOLD_MS });
   }
   const id = newId();
   try {
-    await run(db, "INSERT INTO reservations (id, list_item_id, guest_session_hash, status, expires_at, created_at) VALUES (?,?,?,'held',?,?)", [
+    await run(db, "INSERT INTO reservations (id, list_item_id, guest_session_hash, status, expires_at, created_at, product_id) VALUES (?,?,?,'held',?,?,?)", [
       id,
       item.id,
       sessionHash,
       ts + HOLD_MS,
       ts,
+      branchProduct,
     ]);
   } catch (e) {
     // unique index uq_reservations_active lost the race
@@ -244,7 +284,7 @@ pub.post("/checkout", async (c) => {
             COALESCE(s.quantity,0) AS stock, sh.webhook_url, sh.webhook_secret_enc, sh.email_enc AS shop_email_enc
      FROM reservations r
      JOIN list_items li ON li.id = r.list_item_id
-     JOIN products p ON p.id = li.product_id
+     JOIN products p ON p.id = COALESCE(r.product_id, li.product_id)
      JOIN shops sh ON sh.id = p.shop_id
      LEFT JOIN stock s ON s.product_id = p.id
      WHERE r.id IN (${placeholders(ids.length)}) AND r.status = 'held' AND r.guest_session_hash = ?

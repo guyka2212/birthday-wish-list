@@ -38,8 +38,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   list: (slug: string, session: string) => request<PublicList>(`/public/l/${encodeURIComponent(slug)}?session=${encodeURIComponent(session)}`),
-  reserve: (slug: string, listItemId: string, guestSession: string) =>
-    request<ReservationView>("/public/reservations", { method: "POST", body: JSON.stringify({ slug, listItemId, guestSession }) }),
+  reserve: (slug: string, listItemId: string, guestSession: string, productId?: string | null) =>
+    request<ReservationView>("/public/reservations", { method: "POST", body: JSON.stringify({ slug, listItemId, guestSession, ...(productId ? { productId } : {}) }) }),
   release: (reservationId: string, guestSession: string) =>
     request<{ ok: true }>("/public/reservations/release", { method: "POST", body: JSON.stringify({ reservationId, guestSession }) }),
   checkout: (input: CheckoutInput) => request<CheckoutResult>("/public/checkout", { method: "POST", body: JSON.stringify(input) }),

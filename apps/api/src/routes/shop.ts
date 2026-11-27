@@ -57,14 +57,15 @@ shopAuth.post("/signup", async (c) => {
   const ts = now();
   await run(
     db,
-    `INSERT INTO shops (id, name, slug, business_id_enc, address_enc, city, phone_enc, contact_name, email_enc, email_hash, password_hash,
+    `INSERT INTO shops (id, name, slug, business_id_enc, business_id_hash, address_enc, city, phone_enc, contact_name, email_enc, email_hash, password_hash,
                         logo_url, pickup_info, offers_delivery, status, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?)`,
     [
       id,
       input.name,
       slugify(input.name),
       await box.encrypt(input.businessId),
+      await box.blindIndex(input.businessId), // same ח.פ = branches of one shop
       await box.encrypt(input.address),
       input.city,
       await box.encrypt(input.phone),

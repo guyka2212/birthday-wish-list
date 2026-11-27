@@ -88,6 +88,10 @@ export class Mailer {
     private box: CryptoBox,
   ) {}
 
+  get providerName() {
+    return this.provider.name;
+  }
+
   async send(db: Executor, msg: EmailMessage, now: number) {
     const r = await this.provider.send(msg);
     await run(

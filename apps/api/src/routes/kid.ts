@@ -75,7 +75,7 @@ async function toProfile(deps: Deps, u: UserRow): Promise<KidProfile> {
 async function kidShops(deps: Deps, userId: string) {
   const row = await one<{ city_enc: string | null }>(deps.db, "SELECT city_enc FROM users WHERE id = ?", [userId]);
   const city = await deps.box.decryptNullable(row?.city_enc);
-  const shops = await nearbyShops(deps.db, city);
+  const shops = await nearbyShops(deps.db, deps.box, city);
   return { city, shops, ids: shops.map((s) => s.id), dist: new Map(shops.map((s) => [s.id, s.distanceKm])) };
 }
 

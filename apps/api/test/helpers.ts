@@ -75,21 +75,24 @@ export async function setup(env: Record<string, string> = {}): Promise<TestCtx> 
 /** Insert an approved shop with products. Returns ids. */
 export async function seedShop(
   ctx: TestCtx,
-  opts: { status?: string; email?: string; password?: string; webhookUrl?: string; city?: string; name?: string; products?: Array<{ sku: string; price: number; stock: number }> } = {},
+  opts: { status?: string; email?: string; password?: string; webhookUrl?: string; city?: string; name?: string; businessId?: string; products?: Array<{ sku: string; price: number; stock: number }> } = {},
 ) {
   const { db, box } = ctx.deps;
   const id = newId();
   const email = opts.email ?? `shop-${randomBase62(6)}@example.com`;
   const now = ctx.clock.t;
+  // every test shop is its own business unless a test makes branches of one chain
+  const businessId = opts.businessId ?? String(500000000 + Math.floor(Math.random() * 99999999));
   await run(
     db,
-    `INSERT INTO shops (id, name, slug, business_id_enc, address_enc, city, phone_enc, contact_name, email_enc, email_hash, password_hash, status, webhook_url, webhook_secret_enc, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO shops (id, name, slug, business_id_enc, business_id_hash, address_enc, city, phone_enc, contact_name, email_enc, email_hash, password_hash, status, webhook_url, webhook_secret_enc, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       opts.name ?? "Test Toys",
       `test-${randomBase62(5)}`,
-      await box.encrypt("514839201"),
+      await box.encrypt(businessId),
+      await box.blindIndex(businessId),
       await box.encrypt("Herzl 1"),
       opts.city ?? "Haifa",
       await box.encrypt("04-1234567"),

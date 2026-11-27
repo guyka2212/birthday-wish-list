@@ -1,4 +1,5 @@
 import { TemplatesEditor } from "./Templates";
+import { AdminStats } from "./AdminStats";
 import { useState } from "react";
 import { API_URL, adminApi, shopApi } from "../lib/api";
 import { Badge, Button, Card, Empty, ErrorBox, Field, inputClass, Loading, useLoad } from "../components/ui";
@@ -215,7 +216,7 @@ export function SettingsPage() {
 
 /** Admin: approve new shops and peek at the email outbox. */
 export function AdminPage() {
-  const [tab, setTab] = useState<"pending" | "all" | "templates" | "outbox">("pending");
+  const [tab, setTab] = useState<"stats" | "pending" | "all" | "templates" | "outbox">("stats");
   const stats = useLoad(() => adminApi.stats());
   const shops = useLoad(() => (tab === "pending" || tab === "all" ? adminApi.shops(tab === "pending" ? "pending" : undefined) : Promise.resolve([])), [tab]);
   const outbox = useLoad(() => (tab === "outbox" ? adminApi.outbox() : Promise.resolve([])), [tab]);
@@ -245,13 +246,15 @@ export function AdminPage() {
           ))}
         </div>
       )}
-      <div className="flex gap-2" role="tablist">
-        {([["pending", "ממתינות לאישור"], ["all", "כל החנויות"], ["templates", "תבניות מייל"], ["outbox", "תיבת דואר יוצא"]] as const).map(([k, l]) => (
+      <div className="flex flex-wrap gap-2" role="tablist">
+        {([["stats", "📊 סטטיסטיקות"], ["pending", "ממתינות לאישור"], ["all", "כל החנויות"], ["templates", "תבניות מייל"], ["outbox", "תיבת דואר יוצא"]] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`btn-press rounded-full px-4 py-2 font-bold ${tab === k ? "bg-sky-deep text-white" : "bg-white"}`}>{l}</button>
         ))}
       </div>
       {err && <ErrorBox error={new Error(err)} />}
-      {tab === "templates" ? (
+      {tab === "stats" ? (
+        <AdminStats />
+      ) : tab === "templates" ? (
         <TemplatesEditor />
       ) : tab !== "outbox" ? (
         shops.loading ? <Loading /> : shops.error ? <ErrorBox error={shops.error} onRetry={shops.reload} /> : !shops.data?.length ? (
