@@ -63,7 +63,7 @@ fun App(repo: Repository, platform: PlatformActions, openListId: String? = null)
             val session = viewModel { SessionViewModel(repo) }
             val loggedIn by session.loggedIn.collectAsState()
             if (!loggedIn) {
-                AuthScreen(repo, language, onLoggedIn = { session.onLoggedIn(); platform.requestNotificationPermission() })
+                AuthScreen(repo, language, session, onLoggedIn = { session.onLoggedIn(); platform.requestNotificationPermission() })
             } else {
                 MainShell(repo, session, language, openListId, onLanguage = { language = it; platform.saveLanguage(it) })
             }
@@ -76,6 +76,8 @@ private fun MainShell(repo: Repository, session: SessionViewModel, language: Str
     val s = LocalStrings.current
     val nav = rememberNavController()
     val profile by session.profile.collectAsState()
+    val photoBytes by session.photo.collectAsState()
+    val photo = com.guykadosh22.kids_birth_day_gift_list.ui.components.rememberImage(photoBytes)
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val tab = when (route) {
@@ -93,6 +95,7 @@ private fun MainShell(repo: Repository, session: SessionViewModel, language: Str
             TopBar(
                 username = profile?.username ?: "…",
                 avatar = profile?.avatar ?: "🎈",
+                photo = photo,
                 title = when (tab) { Tab.Home -> s.tabHome; Tab.Lists -> if (route == Routes.EDIT) s.editList else s.myLists; Tab.New -> s.newList; Tab.Profile -> s.profile; null -> null },
                 onAvatarClick = { nav.goTab(Routes.PROFILE) },
             )
@@ -121,7 +124,7 @@ private fun MainShell(repo: Repository, session: SessionViewModel, language: Str
                 }
                 composable(Routes.PROFILE) {
                     ProfileScreen(
-                        repo, profile, language,
+                        repo, profile, language, photoBytes, session,
                         onProfile = { session.setProfile(it) },
                         onLanguage = onLanguage,
                         onLogout = { session.logout() },

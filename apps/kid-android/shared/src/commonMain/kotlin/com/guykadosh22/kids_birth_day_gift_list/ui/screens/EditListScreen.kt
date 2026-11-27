@@ -72,7 +72,6 @@ import com.guykadosh22.kids_birth_day_gift_list.ui.components.LoadingState
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.Pill
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.ProductImage
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.ProductTile
-import com.guykadosh22.kids_birth_day_gift_list.ui.components.ThemePreview
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.bouncyClick
 import com.guykadosh22.kids_birth_day_gift_list.ui.errorMessage
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.BwlColors
@@ -80,7 +79,7 @@ import com.guykadosh22.kids_birth_day_gift_list.ui.theme.CategoryEmoji
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.LocalStrings
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Radius
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Space
-import com.guykadosh22.kids_birth_day_gift_list.ui.theme.giftTheme
+import com.guykadosh22.kids_birth_day_gift_list.ui.theme.listTheme
 
 /** לערוך — search (חיפוש) + filter (סינון) over products from registered shops; tap to add/remove. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -147,9 +146,10 @@ fun EditListScreen(repo: Repository, listId: String, kidFirstName: String, conse
             }
             if (showTheme) {
                 ModalBottomSheet(onDismissRequest = { showTheme = false }) {
-                    Column(Modifier.padding(Space.l).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(Space.m)) {
-                        ThemePicker(list.themeId) { vm.updateDetails(com.guykadosh22.kids_birth_day_gift_list.data.ListUpdate(themeId = it)) }
-                        ThemePreview(giftTheme(list.themeId), kidFirstName, list.name, Modifier.fillMaxWidth())
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(Space.l).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(Space.m)) {
+                        QuizFlow(repo, kidFirstName, list.name, initial = list.quiz) { answers, _ ->
+                            if (answers != null && answers != list.quiz) vm.updateDetails(com.guykadosh22.kids_birth_day_gift_list.data.ListUpdate(quiz = answers))
+                        }
                         BigButton(s.done, { showTheme = false }, Modifier.fillMaxWidth())
                     }
                 }
@@ -161,7 +161,7 @@ fun EditListScreen(repo: Repository, listId: String, kidFirstName: String, conse
 @Composable
 private fun ListHeader(list: ListDetail, onShare: () -> Unit, onTheme: () -> Unit) {
     val s = LocalStrings.current
-    val theme = giftTheme(list.themeId)
+    val theme = listTheme(list.theme, list.themeId)
     BwlCard(Modifier.fillMaxWidth(), color = theme.bg) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(

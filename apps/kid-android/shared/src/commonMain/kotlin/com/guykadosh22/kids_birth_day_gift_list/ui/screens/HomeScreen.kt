@@ -65,7 +65,7 @@ import com.guykadosh22.kids_birth_day_gift_list.ui.theme.BwlColors
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.LocalStrings
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Radius
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Space
-import com.guykadosh22.kids_birth_day_gift_list.ui.theme.giftTheme
+import com.guykadosh22.kids_birth_day_gift_list.ui.theme.listTheme
 import kotlinx.coroutines.launch
 
 /** Home (empty on the board — designed here): countdown, active list progress, share, trending, surprise-safe activity. */
@@ -98,7 +98,7 @@ fun HomeScreen(repo: Repository, onOpenList: (String) -> Unit, onCreateList: () 
                             EmptyState("📝", s.noListsYetHome, null, action = s.createFirstList, onAction = onCreateList)
                         }
                     } else {
-                        val theme = giftTheme(list.themeId)
+                        val theme = listTheme(list.theme, list.themeId)
                         BwlCard(Modifier.fillMaxWidth(), onClick = { onOpenList(list.id) }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(theme.emoji, fontSize = 32.sp)
@@ -205,7 +205,7 @@ private fun ActivityRow(a: ActivityItem) {
             Text(if (a.kind == "gift_bought") "🎁" else "✨", fontSize = 30.sp)
             Spacer(Modifier.width(Space.m))
             Column(Modifier.weight(1f)) {
-                Text(a.title, style = MaterialTheme.typography.titleSmall)
+                Text(if (a.kind == "gift_bought") LocalStrings.current.notifTitle else a.title, style = MaterialTheme.typography.titleSmall)
                 Text(a.body, style = MaterialTheme.typography.bodySmall, color = BwlColors.InkSoft)
             }
         }

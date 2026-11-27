@@ -135,3 +135,16 @@ val GiftThemes = listOf(
 )
 
 fun giftTheme(id: String?) = GiftThemes.firstOrNull { it.id == id } ?: GiftThemes[1]
+
+fun hexColor(hex: String, fallback: Color = BwlColors.Sky): Color =
+    hex.removePrefix("#").toLongOrNull(16)?.let { Color(0xFF000000 or it) } ?: fallback
+
+/** Server theme (preset or quiz-generated) → the app's theme model. */
+fun com.guykadosh22.kids_birth_day_gift_list.data.ThemeDto.toGift() = GiftTheme(
+    id = id, emoji = emoji, nameHe = nameHe, nameEn = nameEn,
+    primary = hexColor(primary), accent = hexColor(accent), bg = hexColor(bg), text = hexColor(text),
+    confetti = confetti.drop(1).take(4),
+)
+
+/** Theme for a list: the server-resolved one when present, otherwise the preset by id. */
+fun listTheme(theme: com.guykadosh22.kids_birth_day_gift_list.data.ThemeDto?, themeId: String?) = theme?.toGift() ?: giftTheme(themeId)

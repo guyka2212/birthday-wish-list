@@ -34,6 +34,12 @@ import com.guykadosh22.kids_birth_day_gift_list.data.KidProfile
 import com.guykadosh22.kids_birth_day_gift_list.data.ProfileUpdate
 import com.guykadosh22.kids_birth_day_gift_list.data.Repository
 import com.guykadosh22.kids_birth_day_gift_list.ui.ProfileViewModel
+import com.guykadosh22.kids_birth_day_gift_list.ui.SessionViewModel
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.PhotoPicker
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.ProfilePhoto
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.rememberImage
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.Avatar
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.BigButton
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.BwlCard
@@ -54,6 +60,8 @@ fun ProfileScreen(
     repo: Repository,
     profile: KidProfile?,
     language: String,
+    photoBytes: ByteArray?,
+    session: SessionViewModel,
     onProfile: (KidProfile) -> Unit,
     onLanguage: (String) -> Unit,
     onLogout: () -> Unit,
@@ -82,8 +90,16 @@ fun ProfileScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Space.m),
     ) {
-        Avatar(avatar, size = 128.dp, ring = BwlColors.Sky)
+        val scope = rememberCoroutineScope()
         if (editing) {
+            // change the photo right away: take a new one or pick from the gallery
+            PhotoPicker(
+                photoBytes, avatar,
+                onPicked = { bytes -> scope.launch { if (!session.setPhoto(bytes)) platform.toast(s.photoUploadFailed) } },
+                onRemove = { scope.launch { session.setPhoto(null) } },
+                size = 128.dp,
+            )
+            Text(s.orCharacter, style = MaterialTheme.typography.labelMedium, color = BwlColors.InkSoft)
             Row(horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
                 Avatars.forEach { a ->
                     Box(Modifier.weight(1f).bouncyClick { avatar = a }, contentAlignment = Alignment.Center) {
@@ -91,6 +107,8 @@ fun ProfileScreen(
                     }
                 }
             }
+        } else {
+            ProfilePhoto(rememberImage(photoBytes), avatar, size = 128.dp, ring = BwlColors.Sky)
         }
         Pill(
             if (profile.consentStatus == "verified") s.parentOk else s.parentPending,

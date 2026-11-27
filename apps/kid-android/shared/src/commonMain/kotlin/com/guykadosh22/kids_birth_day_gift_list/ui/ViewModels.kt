@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 sealed interface UiState<out T> {
     data object Loading : UiState<Nothing>
@@ -54,6 +56,9 @@ class SessionViewModel(val repo: Repository) : ViewModel() {
     val loggedIn: StateFlow<Boolean> = _loggedIn.asStateFlow()
     private val _profile = MutableStateFlow<KidProfile?>(null)
     val profile: StateFlow<KidProfile?> = _profile.asStateFlow()
+    /** the kid's profile photo (JPEG bytes), shown in the top bar and Profile */
+    private val _photo = MutableStateFlow<ByteArray?>(null)
+    val photo: StateFlow<ByteArray?> = _photo.asStateFlow()
 
     init {
         repo.api.onSessionExpired = { _loggedIn.value = false; _profile.value = null }
@@ -65,19 +70,33 @@ class SessionViewModel(val repo: Repository) : ViewModel() {
         refreshProfile()
     }
 
+    @OptIn(ExperimentalEncodingApi::class)
     fun refreshProfile() = viewModelScope.launch {
-        runCatching { repo.me() }.onSuccess { _profile.value = it }
+        runCatching { repo.me() }.onSuccess { p ->
+            _profile.value = p
+            _photo.value = if (p.hasPhoto) runCatching { Base64.decode(repo.photo().photo) }.getOrNull() else null
+        }
     }
+
+    /** Uploads a new photo (or removes it with null). Returns false if the upload failed. */
+    @OptIn(ExperimentalEncodingApi::class)
+    suspend fun setPhoto(bytes: ByteArray?): Boolean = runCatching {
+        if (bytes == null) repo.deletePhoto() else repo.uploadPhoto(Base64.encode(bytes))
+        _photo.value = bytes
+        _profile.value = _profile.value?.copy(hasPhoto = bytes != null)
+    }.isSuccess
 
     fun setProfile(p: KidProfile) { _profile.value = p }
 
     fun logout() = viewModelScope.launch {
         repo.logout()
         _profile.value = null
+        _photo.value = null
         _loggedIn.value = false
     }
 
     fun onAccountDeleted() {
+        _photo.value = null
         _profile.value = null
         _loggedIn.value = false
     }

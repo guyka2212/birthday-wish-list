@@ -1,10 +1,16 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import {
   catalogQuerySchema,
   listCreateSchema,
   listItemAddSchema,
   listUpdateSchema,
+  photoUploadSchema,
   profileUpdateSchema,
+  QUIZ,
+  quizAnswersSchema,
+  generateTheme,
+  type QuizAnswers,
   type ActivityItem,
   type HomeSummary,
   type KidProfile,
@@ -35,12 +41,13 @@ interface UserRow {
   locale: "he" | "en";
   consent_status: "pending" | "verified";
   password_hash: string;
+  has_photo: number;
 }
 
 async function loadUser(deps: Deps, id: string): Promise<UserRow> {
   const u = await one<UserRow>(
     deps.db,
-    "SELECT id, username, first_name, email_enc, avatar, birthday, locale, consent_status, password_hash FROM users WHERE id = ? AND deleted_at IS NULL",
+    "SELECT id, username, first_name, email_enc, avatar, birthday, locale, consent_status, password_hash, (photo_enc IS NOT NULL) AS has_photo FROM users WHERE id = ? AND deleted_at IS NULL",
     [id],
   );
   if (!u) throw unauthorized("account not found");
@@ -57,7 +64,15 @@ async function toProfile(deps: Deps, u: UserRow): Promise<KidProfile> {
     birthday: u.birthday,
     locale: u.locale,
     consentStatus: u.consent_status,
+    hasPhoto: !!Number(u.has_photo),
   };
+}
+
+/** Columns to write when a list gets quiz answers (custom theme) or a preset theme. */
+function themeColumns(quiz: QuizAnswers | undefined, themeId: string | undefined, firstName: string) {
+  if (quiz) return { theme_id: "custom", quiz_answers: JSON.stringify(quiz), custom_theme: JSON.stringify(generateTheme(quiz, firstName)) };
+  if (themeId) return { theme_id: themeId, quiz_answers: null, custom_theme: null };
+  return null;
 }
 
 async function activity(deps: Deps, userId: string, limit = 20): Promise<ActivityItem[]> {
@@ -116,7 +131,7 @@ kid.delete("/me", async (c) => {
   await tx(db, async (t) => {
     await run(
       t,
-      `UPDATE users SET deleted_at = ?, updated_at = ?, username = 'deleted', first_name = '', email_enc = '', email_hash = ?, password_hash = '', birthday = NULL WHERE id = ?`,
+      `UPDATE users SET deleted_at = ?, updated_at = ?, username = 'deleted', first_name = '', email_enc = '', email_hash = ?, password_hash = '', birthday = NULL, photo_enc = NULL WHERE id = ?`,
       [ts, ts, `deleted:${id}`, id],
     );
     await run(t, "UPDATE parent_consents SET parent_email_enc = '', parent_email_hash = '' WHERE user_id = ?", [id]);
@@ -189,6 +204,54 @@ kid.post("/me/activity/read", async (c) => {
   return c.json({ ok: true });
 });
 
+// ---------- profile photo (private: only the kid sees it, never the public share page) ----------
+const MAX_PHOTO_BYTES = 300 * 1024;
+function photoKind(b: Buffer): "jpeg" | "png" | "webp" | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "jpeg";
+  if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png";
+  if (b.subarray(0, 4).toString("ascii") === "RIFF" && b.subarray(8, 12).toString("ascii") === "WEBP") return "webp";
+  return null;
+}
+
+kid.put("/me/photo", async (c) => {
+  const { db, box, now } = c.var.deps;
+  await enforce(c, "photo", 20, 3600_000);
+  const { photo } = await body(c, photoUploadSchema);
+  const bytes = Buffer.from(photo, "base64");
+  if (bytes.length > MAX_PHOTO_BYTES) throw badRequest("photo_too_large", "photo must be under 300 KB");
+  const kind = photoKind(bytes);
+  if (!kind) throw badRequest("photo_type", "photo must be a JPEG, PNG or WebP image");
+  await run(db, "UPDATE users SET photo_enc = ?, updated_at = ? WHERE id = ?", [await box.encrypt(`${kind}:${photo}`), now(), c.var.subjectId]);
+  await audit(db, { actorType: "kid", actorId: c.var.subjectId, action: "profile.photo_set", meta: { kind, bytes: bytes.length } }, now());
+  return c.json({ ok: true, hasPhoto: true });
+});
+
+kid.get("/me/photo", async (c) => {
+  const { db, box } = c.var.deps;
+  const row = await one<{ photo_enc: string | null }>(db, "SELECT photo_enc FROM users WHERE id = ?", [c.var.subjectId]);
+  if (!row?.photo_enc) throw notFound("photo");
+  const [kind, data] = (await box.decrypt(row.photo_enc)).split(":", 2) as [string, string];
+  c.header("Cache-Control", "private, no-store");
+  return c.json({ contentType: `image/${kind}`, photo: data });
+});
+
+kid.delete("/me/photo", async (c) => {
+  const { db, now } = c.var.deps;
+  await run(db, "UPDATE users SET photo_enc = NULL, updated_at = ? WHERE id = ?", [now(), c.var.subjectId]);
+  return c.json({ ok: true, hasPhoto: false });
+});
+
+// ---------- theme quiz ----------
+kid.get("/quiz", (c) => c.json({ questions: QUIZ }));
+
+/** Live preview while the kid answers: returns the theme these answers would create. */
+kid.post("/themes/preview", async (c) => {
+  const deps = c.var.deps;
+  const u = await loadUser(deps, c.var.subjectId);
+  const { quiz } = await body(c, z.object({ quiz: quizAnswersSchema }));
+  return c.json(generateTheme(quiz, u.first_name));
+});
+
 // ---------- catalog ----------
 kid.get("/catalog", async (c) => {
   const f = query(c, catalogQuerySchema);
@@ -212,13 +275,17 @@ kid.post("/lists", async (c) => {
   if (Number(count?.n ?? 0) >= 20) throw badRequest("too_many_lists", "you can have up to 20 lists");
   const id = newId();
   const ts = now();
-  await run(db, "INSERT INTO lists (id, user_id, name, description, birthday, theme_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)", [
+  const user = await loadUser(c.var.deps, c.var.subjectId);
+  const theme = themeColumns(input.quiz, input.themeId, user.first_name)!;
+  await run(db, "INSERT INTO lists (id, user_id, name, description, birthday, theme_id, quiz_answers, custom_theme, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)", [
     id,
     c.var.subjectId,
     input.name,
     input.description,
     input.birthday ?? null,
-    input.themeId,
+    theme.theme_id,
+    theme.quiz_answers,
+    theme.custom_theme,
     ts,
     ts,
   ]);
@@ -235,12 +302,19 @@ kid.patch("/lists/:id", async (c) => {
   const listId = c.req.param("id");
   await ownedList(db, c.var.subjectId, listId, config.PUBLIC_GUEST_URL);
   const input = await body(c, listUpdateSchema);
-  const map: Record<string, string> = { name: "name", description: "description", birthday: "birthday", themeId: "theme_id" };
+  const map: Record<string, string> = { name: "name", description: "description", birthday: "birthday" };
   const sets: string[] = [];
   const args: (string | null)[] = [];
   for (const [k, col] of Object.entries(map)) {
     const v = (input as Record<string, string | null | undefined>)[k];
     if (v !== undefined) {
+      sets.push(`${col} = ?`);
+      args.push(v);
+    }
+  }
+  const theme = themeColumns(input.quiz, input.themeId, (await loadUser(c.var.deps, c.var.subjectId)).first_name);
+  if (theme) {
+    for (const [col, v] of Object.entries(theme)) {
       sets.push(`${col} = ?`);
       args.push(v);
     }

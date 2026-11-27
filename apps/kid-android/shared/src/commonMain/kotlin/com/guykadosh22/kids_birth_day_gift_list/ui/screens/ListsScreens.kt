@@ -69,7 +69,7 @@ import com.guykadosh22.kids_birth_day_gift_list.ui.theme.GiftThemes
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.LocalStrings
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Radius
 import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Space
-import com.guykadosh22.kids_birth_day_gift_list.ui.theme.giftTheme
+import com.guykadosh22.kids_birth_day_gift_list.ui.theme.listTheme
 
 /** רשימות — list cards: name, description and an edit (לערוך) button, as on the board. */
 @Composable
@@ -116,7 +116,7 @@ fun ListsScreen(repo: Repository, onEdit: (String) -> Unit, onCreate: () -> Unit
 @Composable
 private fun ListCard(list: ListSummary, onEdit: () -> Unit, onDelete: () -> Unit) {
     val s = LocalStrings.current
-    val theme = giftTheme(list.themeId)
+    val theme = listTheme(list.theme, list.themeId)
     BwlCard(Modifier.fillMaxWidth(), onClick = onEdit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(56.dp).clip(CircleShape).background(theme.bg), contentAlignment = Alignment.Center) { Text(theme.emoji, fontSize = 28.sp) }
@@ -153,7 +153,7 @@ fun NewListScreen(repo: Repository, kidFirstName: String, onCreated: (String) ->
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf("") }
-    var themeId by rememberSaveable { mutableStateOf("unicorn") }
+    var quiz by remember { mutableStateOf<Map<String, String>?>(null) }
     var tried by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -164,8 +164,9 @@ fun NewListScreen(repo: Repository, kidFirstName: String, onCreated: (String) ->
         BwlTextField(name, { if (it.length <= 60) name = it }, s.listName, error = if (tried && name.isBlank()) s.nameRequired else null)
         BwlTextField(description, { if (it.length <= 300) description = it }, s.listDescription, singleLine = false, minLines = 3)
         DateField(date, { date = it }, s.partyDate)
-        ThemePicker(themeId) { themeId = it }
-        ThemePreview(giftTheme(themeId), kidFirstName, name, Modifier.fillMaxWidth())
+        // the guest-shop theme is created from the kid's quiz answers
+        QuizFlow(repo, kidFirstName, name, initial = null) { answers, _ -> quiz = answers }
+        if (tried && quiz == null) Text(s.quizNeeded, color = BwlColors.Danger)
         error?.let { Text(errorMessage(it, s), color = BwlColors.Danger) }
         Spacer(Modifier.height(Space.s))
         BigButton(
@@ -176,7 +177,8 @@ fun NewListScreen(repo: Repository, kidFirstName: String, onCreated: (String) ->
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 tried = true
-                if (name.isNotBlank()) vm.create(ListCreate(name.trim(), description.trim(), date.ifBlank { null }, themeId)) { onCreated(it.id) }
+                val answers = quiz
+                if (name.isNotBlank() && answers != null) vm.create(ListCreate(name.trim(), description.trim(), date.ifBlank { null }, quiz = answers)) { onCreated(it.id) }
             },
         )
         Spacer(Modifier.height(Space.xl))

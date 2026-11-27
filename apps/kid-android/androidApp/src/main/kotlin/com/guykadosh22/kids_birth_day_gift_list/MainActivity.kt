@@ -13,10 +13,33 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    // ---- profile photo: gallery (system photo picker, no storage permission) or camera (preview intent, no camera permission) ----
+    private var photoCallback: ((ByteArray?) -> Unit)? = null
+    private val pickFromGallery = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        deliverPhoto { uri?.let { PhotoProcessing.fromUri(this, it) } }
+    }
+    private val takeWithCamera = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        deliverPhoto { bitmap?.let { PhotoProcessing.toSquareJpeg(it) } }
+    }
+
+    private fun deliverPhoto(produce: () -> ByteArray?) {
+        val cb = photoCallback ?: return
+        photoCallback = null
+        lifecycleScope.launch {
+            val bytes = withContext(Dispatchers.Default) { runCatching(produce).getOrNull() }
+            cb(bytes)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -51,6 +74,17 @@ class MainActivity : ComponentActivity() {
 
             override fun saveLanguage(lang: String) = app.prefs.edit().putString("lang", lang).apply()
             override fun loadLanguage(): String = app.prefs.getString("lang", "he") ?: "he"
+            override fun pickPhoto(fromCamera: Boolean, onResult: (ByteArray?) -> Unit) {
+                photoCallback = onResult
+                runCatching {
+                    if (fromCamera) takeWithCamera.launch(null)
+                    else pickFromGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }.onFailure {
+                    photoCallback = null
+                    onResult(null)
+                }
+            }
+
             override fun markActivitySeen(createdAt: Long) {
                 if (createdAt > app.prefs.getLong(GiftWorker.KEY_SEEN, 0)) app.prefs.edit().putLong(GiftWorker.KEY_SEEN, createdAt).apply()
             }

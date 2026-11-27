@@ -3,7 +3,8 @@ export const THEME_IDS = ["space", "unicorn", "football", "dinosaurs", "ocean", 
 export type ThemeId = (typeof THEME_IDS)[number];
 
 export interface Theme {
-  id: ThemeId;
+  /** a preset id, or "custom" for a theme generated from the quiz */
+  id: ThemeId | "custom";
   nameHe: string;
   nameEn: string;
   emoji: string;

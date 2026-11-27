@@ -16,7 +16,7 @@ export default function ShopPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const theme = useTheme(state.kind === "ready" ? state.list.themeId : "unicorn");
+  const theme = useTheme(state.kind === "ready" ? (state.list.theme ?? state.list.themeId) : "unicorn");
 
   const load = useCallback(
     async (silent = false) => {

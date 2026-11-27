@@ -59,7 +59,7 @@ import com.guykadosh22.kids_birth_day_gift_list.ui.theme.Space
 
 /** Top bar from the board: round profile picture + ${USERNAME}. */
 @Composable
-fun TopBar(username: String, avatar: String, title: String? = null, onAvatarClick: () -> Unit = {}, trailing: @Composable () -> Unit = {}) {
+fun TopBar(username: String, avatar: String, title: String? = null, photo: androidx.compose.ui.graphics.ImageBitmap? = null, onAvatarClick: () -> Unit = {}, trailing: @Composable () -> Unit = {}) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -69,7 +69,7 @@ fun TopBar(username: String, avatar: String, title: String? = null, onAvatarClic
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.bouncyClick(onClick = onAvatarClick).semantics { contentDescription = username }) {
-                Avatar(avatar, size = 52.dp)
+                ProfilePhoto(photo, avatar, size = 52.dp)
             }
             Spacer(Modifier.width(Space.m))
             Column(Modifier.weight(1f)) {

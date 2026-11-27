@@ -1,4 +1,4 @@
-import type { ListDetail, ListSummary, ThemeId } from "@bwl/shared";
+import { getTheme, type ListDetail, type ListSummary, type QuizAnswers, type Theme, type ThemeId } from "@bwl/shared";
 import type { Executor } from "../db";
 import { all, one } from "../db";
 import { notFound } from "../lib/errors";
@@ -9,7 +9,9 @@ interface ListRow {
   name: string;
   description: string;
   birthday: string | null;
-  theme_id: ThemeId;
+  theme_id: ThemeId | "custom";
+  quiz_answers: string | null;
+  custom_theme: string | null;
   created_at: number;
   updated_at: number;
   item_count: number;
@@ -19,7 +21,7 @@ interface ListRow {
 }
 
 const LIST_SELECT = `
-  SELECT l.id, l.name, l.description, l.birthday, l.theme_id, l.created_at, l.updated_at,
+  SELECT l.id, l.name, l.description, l.birthday, l.theme_id, l.quiz_answers, l.custom_theme, l.created_at, l.updated_at,
     (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count,
     (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id AND li.status = 'purchased') AS purchased_count,
     sl.slug, sl.enabled AS share_enabled
@@ -30,6 +32,18 @@ export function shareUrl(guestBase: string, slug: string) {
   return `${guestBase.replace(/\/$/, "")}/l/${slug}`;
 }
 
+/** Preset theme, or the quiz-generated one stored on the list. */
+export function resolveTheme(themeId: string, customTheme: string | null): Theme {
+  if (themeId === "custom" && customTheme) {
+    try {
+      return JSON.parse(customTheme) as Theme;
+    } catch {
+      /* fall through */
+    }
+  }
+  return getTheme(themeId);
+}
+
 function toSummary(r: ListRow, guestBase: string): ListSummary {
   return {
     id: r.id,
@@ -37,6 +51,8 @@ function toSummary(r: ListRow, guestBase: string): ListSummary {
     description: r.description,
     birthday: r.birthday,
     themeId: r.theme_id,
+    theme: resolveTheme(r.theme_id, r.custom_theme),
+    quiz: r.quiz_answers ? (JSON.parse(r.quiz_answers) as QuizAnswers) : null,
     itemCount: Number(r.item_count),
     purchasedCount: Number(r.purchased_count),
     share: r.slug ? { slug: r.slug, enabled: !!Number(r.share_enabled), url: shareUrl(guestBase, r.slug) } : null,

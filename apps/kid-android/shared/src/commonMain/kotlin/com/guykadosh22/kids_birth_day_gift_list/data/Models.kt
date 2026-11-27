@@ -17,6 +17,7 @@ data class KidProfile(
     val birthday: String? = null,
     val locale: String = "he",
     val consentStatus: String = "pending",
+    val hasPhoto: Boolean = false,
 )
 
 @Serializable
@@ -47,6 +48,8 @@ data class ListSummary(
     val description: String = "",
     val birthday: String? = null,
     val themeId: String = "unicorn",
+    val theme: ThemeDto? = null,
+    val quiz: Map<String, String>? = null,
     val itemCount: Int = 0,
     val purchasedCount: Int = 0,
     val share: ShareInfo? = null,
@@ -66,6 +69,8 @@ data class ListDetail(
     val description: String = "",
     val birthday: String? = null,
     val themeId: String = "unicorn",
+    val theme: ThemeDto? = null,
+    val quiz: Map<String, String>? = null,
     val itemCount: Int = 0,
     val purchasedCount: Int = 0,
     val share: ShareInfo? = null,
@@ -122,10 +127,49 @@ data class ProfileUpdate(
 )
 
 @Serializable
-data class ListCreate(val name: String, val description: String = "", val birthday: String? = null, val themeId: String = "unicorn")
+data class ListCreate(
+    val name: String,
+    val description: String = "",
+    val birthday: String? = null,
+    val themeId: String = "unicorn",
+    /** quiz answers (question id → option id); the server builds a custom theme from them */
+    val quiz: Map<String, String>? = null,
+)
 
 @Serializable
-data class ListUpdate(val name: String? = null, val description: String? = null, val birthday: String? = null, val themeId: String? = null)
+data class ListUpdate(
+    val name: String? = null,
+    val description: String? = null,
+    val birthday: String? = null,
+    val themeId: String? = null,
+    val quiz: Map<String, String>? = null,
+)
+
+/** A guest-shop theme from the server: a preset or one generated from the quiz. */
+@Serializable
+data class ThemeDto(
+    val id: String,
+    val nameHe: String,
+    val nameEn: String,
+    val emoji: String,
+    val primary: String,
+    val accent: String,
+    val bg: String,
+    val text: String,
+    val onPrimary: String,
+    val onAccent: String,
+    val dark: Boolean = false,
+    val confetti: List<String> = emptyList(),
+    val taglineHe: String = "",
+    val taglineEn: String = "",
+)
+
+@Serializable data class QuizOption(val id: String, val he: String, val en: String, val emoji: String, val swatch: String? = null)
+@Serializable data class QuizQuestion(val id: String, val he: String, val en: String, val emoji: String, val options: List<QuizOption>)
+@Serializable data class QuizResponse(val questions: List<QuizQuestion>)
+@Serializable data class PreviewRequest(val quiz: Map<String, String>)
+@Serializable data class PhotoUpload(val photo: String)
+@Serializable data class PhotoResponse(val contentType: String, val photo: String)
 
 @Serializable data class AddItem(val productId: String)
 

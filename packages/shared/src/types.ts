@@ -1,6 +1,7 @@
 // Response DTOs shared by the API and the web apps. (The Android app mirrors these in Kotlin.)
 import type { Category, OrderStatus } from "./schemas";
-import type { ThemeId } from "./themes";
+import type { Theme, ThemeId } from "./themes";
+import type { QuizAnswers } from "./quiz";
 
 export interface ApiError {
   error: { code: string; message: string; details?: unknown };
@@ -21,6 +22,8 @@ export interface KidProfile {
   birthday: string | null;
   locale: "he" | "en";
   consentStatus: "pending" | "verified";
+  /** a profile photo was uploaded (fetch it from GET /kid/me/photo) */
+  hasPhoto: boolean;
 }
 
 export interface ShopSummary {
@@ -50,7 +53,10 @@ export interface ListSummary {
   name: string;
   description: string;
   birthday: string | null;
-  themeId: ThemeId;
+  themeId: ThemeId | "custom";
+  /** the resolved theme (preset or quiz-generated) */
+  theme: Theme;
+  quiz: QuizAnswers | null;
   itemCount: number;
   purchasedCount: number;
   share: { slug: string; enabled: boolean; url: string } | null;
@@ -91,7 +97,9 @@ export interface PublicList {
   kidFirstName: string;
   listName: string;
   description: string;
-  themeId: ThemeId;
+  themeId: ThemeId | "custom";
+  /** full theme to render (preset or quiz-generated). Never includes personal data. */
+  theme: Theme;
   daysToBirthday: number | null;
   items: PublicListItem[];
 }

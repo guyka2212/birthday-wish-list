@@ -37,7 +37,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guykadosh22.kids_birth_day_gift_list.data.Repository
 import com.guykadosh22.kids_birth_day_gift_list.data.SignupRequest
+import com.guykadosh22.kids_birth_day_gift_list.LocalPlatform
 import com.guykadosh22.kids_birth_day_gift_list.ui.AuthViewModel
+import com.guykadosh22.kids_birth_day_gift_list.ui.SessionViewModel
+import com.guykadosh22.kids_birth_day_gift_list.ui.components.PhotoPicker
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.Avatar
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.BigButton
 import com.guykadosh22.kids_birth_day_gift_list.ui.components.BwlCard
@@ -58,7 +64,7 @@ private val emailRegex = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 private fun validPassword(p: String) = p.length >= 8 && p.any { it.isLetter() } && p.any { it.isDigit() }
 
 @Composable
-fun AuthScreen(repo: Repository, language: String, onLoggedIn: () -> Unit) {
+fun AuthScreen(repo: Repository, language: String, session: SessionViewModel, onLoggedIn: () -> Unit) {
     val s = LocalStrings.current
     val vm = viewModel { AuthViewModel(repo) }
     val busy by vm.busy.collectAsState()
@@ -73,6 +79,17 @@ fun AuthScreen(repo: Repository, language: String, onLoggedIn: () -> Unit) {
     var parentEmail by rememberSaveable { mutableStateOf("") }
     var birthday by rememberSaveable { mutableStateOf("") }
     var avatar by rememberSaveable { mutableStateOf(Avatars.first()) }
+    var photo by remember { mutableStateOf<ByteArray?>(null) }
+    val platform = LocalPlatform.current
+    val scope = rememberCoroutineScope()
+    // after sign-up: save the photo (if one was chosen), then enter the app
+    val afterSignup: () -> Unit = {
+        val chosen = photo
+        if (chosen == null) onLoggedIn() else scope.launch {
+            if (!session.setPhoto(chosen)) platform.toast(s.photoUploadFailed)
+            onLoggedIn()
+        }
+    }
     var tried by rememberSaveable { mutableStateOf(false) }
 
     Box(
@@ -95,7 +112,9 @@ fun AuthScreen(repo: Repository, language: String, onLoggedIn: () -> Unit) {
                             style = MaterialTheme.typography.headlineSmall,
                         )
                         if (m == Mode.Signup) {
-                            Text(s.chooseAvatar, style = MaterialTheme.typography.titleSmall)
+                            // first thing we ask: a picture — take one now or pick from the gallery
+                            PhotoPicker(photo, avatar, onPicked = { photo = it }, onRemove = { photo = null })
+                            Text(if (photo == null) s.orCharacter else s.chooseAvatar, style = MaterialTheme.typography.titleSmall)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
                                 Avatars.take(6).forEach { a ->
                                     Box(Modifier.weight(1f).bouncyClick { avatar = a }, contentAlignment = Alignment.Center) {
@@ -157,7 +176,7 @@ fun AuthScreen(repo: Repository, language: String, onLoggedIn: () -> Unit) {
                                                 username = username.trim(), firstName = firstName.trim(), email = email, password = password,
                                                 parentEmail = parentEmail, birthday = birthday.ifBlank { null }, avatar = avatar, locale = language,
                                             ),
-                                            onLoggedIn,
+                                            afterSignup,
                                         )
                                     }
                                 }

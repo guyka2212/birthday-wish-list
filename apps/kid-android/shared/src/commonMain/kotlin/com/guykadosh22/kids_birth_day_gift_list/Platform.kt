@@ -13,6 +13,11 @@ interface PlatformActions {
     fun loadLanguage(): String = "he"
     /** remembers the newest activity timestamp so background polling only notifies about new gifts */
     fun markActivitySeen(createdAt: Long) {}
+    /**
+     * Lets the kid choose a profile photo: from the gallery, or by taking one with the camera.
+     * Calls back with a small square JPEG (already resized), or null if cancelled.
+     */
+    fun pickPhoto(fromCamera: Boolean, onResult: (ByteArray?) -> Unit) = onResult(null)
 }
 
 object NoopPlatform : PlatformActions {

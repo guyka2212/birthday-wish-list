@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { THEME_IDS } from "./themes";
+import { quizAnswersSchema } from "./quiz";
 
 // ---------- primitives ----------
 export const CATEGORIES = ["toys", "books", "lego", "sports", "art", "games", "other"] as const;
@@ -49,6 +50,14 @@ export const refreshSchema = z.object({ refreshToken: z.string().min(20).max(200
 export const forgotSchema = z.object({ email: emailSchema });
 export const resetSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
 
+/** Profile photo: a base64 JPEG/PNG/WebP, already resized by the app (max ~300 KB). */
+export const photoUploadSchema = z.object({
+  photo: z
+    .string()
+    .max(400_000)
+    .regex(/^[A-Za-z0-9+/=]+$/, "photo must be base64"),
+});
+
 export const profileUpdateSchema = z
   .object({
     username: trimmed(2, 30).optional(),
@@ -71,12 +80,15 @@ export const listCreateSchema = z.object({
   description: z.string().trim().max(300).default(""),
   birthday: dateSchema.nullable().optional(),
   themeId: themeIdSchema.default("unicorn"),
+  /** quiz answers: when present the server generates a custom theme and ignores themeId */
+  quiz: quizAnswersSchema.optional(),
 });
 export const listUpdateSchema = z.object({
   name: trimmed(1, 60).optional(),
   description: z.string().trim().max(300).optional(),
   birthday: dateSchema.nullable().optional(),
   themeId: themeIdSchema.optional(),
+  quiz: quizAnswersSchema.optional(),
 });
 export const listItemAddSchema = z.object({ productId: idSchema });
 

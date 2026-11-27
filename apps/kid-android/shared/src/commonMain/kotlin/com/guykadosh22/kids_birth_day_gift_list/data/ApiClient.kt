@@ -65,6 +65,9 @@ class ApiClient(
     suspend inline fun <reified T> post(path: String, payload: Any? = null, auth: Boolean = true): T =
         send(HttpMethod.Post, path, auth) { if (payload != null) { contentType(ContentType.Application.Json); setBody(payload) } }.body()
 
+    suspend inline fun <reified T> put(path: String, payload: Any, auth: Boolean = true): T =
+        send(HttpMethod.Put, path, auth) { contentType(ContentType.Application.Json); setBody(payload) }.body()
+
     suspend inline fun <reified T> patch(path: String, payload: Any, auth: Boolean = true): T =
         send(HttpMethod.Patch, path, auth) { contentType(ContentType.Application.Json); setBody(payload) }.body()
 

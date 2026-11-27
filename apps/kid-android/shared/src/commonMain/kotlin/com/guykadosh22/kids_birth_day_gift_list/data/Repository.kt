@@ -35,6 +35,15 @@ class Repository(val api: ApiClient) {
         api.get<Items<ActivityItem>>("kid/me/activity") { parameter("since", since) }.items
     suspend fun markActivityRead() { api.post<Unit>("kid/me/activity/read") }
 
+    // ---- profile photo (base64 JPEG, private to the kid) ----
+    suspend fun uploadPhoto(base64: String) { api.put<Unit>("kid/me/photo", PhotoUpload(base64)) }
+    suspend fun photo(): PhotoResponse = api.get("kid/me/photo")
+    suspend fun deletePhoto() { api.delete<Unit>("kid/me/photo") }
+
+    // ---- theme quiz ----
+    suspend fun quiz(): List<QuizQuestion> = api.get<QuizResponse>("kid/quiz").questions
+    suspend fun previewTheme(answers: Map<String, String>): ThemeDto = api.post("kid/themes/preview", PreviewRequest(answers))
+
     // ---- catalog ----
     suspend fun catalog(f: CatalogFilter): List<Product> = api.get<Items<Product>>("kid/catalog") {
         if (f.query.isNotBlank()) parameter("q", f.query.trim())

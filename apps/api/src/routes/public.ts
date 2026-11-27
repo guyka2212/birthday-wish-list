@@ -20,7 +20,7 @@ import { newId, randomBase62, randomToken, sha256Hex } from "../lib/crypto";
 import { ApiError, conflict, notFound, unauthorized } from "../lib/errors";
 import { enforce, ipHash } from "../lib/rateLimit";
 import { body, parse } from "../lib/validate";
-import { daysUntil } from "../services/lists";
+import { daysUntil, resolveTheme } from "../services/lists";
 import { GIFT_BOUGHT, notify, sendWebhook } from "../services/notify";
 import { buildReceipt } from "../services/receipts";
 import { orderNewEmail, receiptEmail } from "../email/templates";
@@ -44,7 +44,8 @@ interface SharedList {
   name: string;
   description: string;
   birthday: string | null;
-  theme_id: ThemeId;
+  theme_id: ThemeId | "custom";
+  custom_theme: string | null;
   first_name: string;
   user_id: string;
 }
@@ -52,7 +53,7 @@ interface SharedList {
 async function listBySlug(db: Executor, slug: string): Promise<SharedList> {
   const row = await one<SharedList>(
     db,
-    `SELECT l.id AS list_id, l.name, l.description, l.birthday, l.theme_id, u.first_name, u.id AS user_id
+    `SELECT l.id AS list_id, l.name, l.description, l.birthday, l.theme_id, l.custom_theme, u.first_name, u.id AS user_id
      FROM share_links sl
      JOIN lists l ON l.id = sl.list_id AND l.deleted_at IS NULL
      JOIN users u ON u.id = l.user_id AND u.deleted_at IS NULL AND u.consent_status = 'verified'
@@ -107,6 +108,7 @@ pub.get("/l/:slug", async (c) => {
     listName: list.name,
     description: list.description,
     themeId: list.theme_id,
+    theme: resolveTheme(list.theme_id, list.custom_theme),
     daysToBirthday: daysUntil(list.birthday, ts),
     items: rows.map((r) => {
       const mine = !!r.r_id && !!sessionHash && r.r_session === sessionHash;
