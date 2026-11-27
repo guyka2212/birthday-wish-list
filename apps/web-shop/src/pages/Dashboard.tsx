@@ -71,8 +71,8 @@ export function DashboardPage() {
 
 const NEXT: Record<string, Array<[string, string]>> = {
   new: [],
-  preparing: [["ready", "מוכנה לאיסוף"], ["shipped", "נשלחה"], ["cancelled", "ביטול"]],
-  ready: [["done", "נאספה ✓"], ["shipped", "נשלחה במשלוח"]],
+  preparing: [["ready", "מוכנה לאיסוף"], ["cancelled", "ביטול"]],
+  ready: [["done", "נאספה ✓"]],
   shipped: [["done", "נמסרה ✓"]],
 };
 const FLOW = ["new", "ready", "done"];
@@ -125,7 +125,7 @@ export function OrdersPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2" role="tablist">
-        {["", "new", "preparing", "ready", "shipped", "done", "cancelled"].map((s) => (
+        {["", "new", "ready", "done", "cancelled"].map((s) => (
           <button key={s} role="tab" aria-selected={filter === s} onClick={() => setFilter(s)} className={`btn-press rounded-full px-4 py-2 text-sm font-bold ${filter === s ? "bg-sky-deep text-white" : "bg-white"}`}>
             {s === "" ? "הכל" : <Badge status={s} />}
           </button>

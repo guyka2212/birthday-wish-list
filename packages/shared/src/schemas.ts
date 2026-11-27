@@ -135,13 +135,10 @@ export const checkoutSchema = z
     buyerName: trimmed(2, 60),
     buyerEmail: emailSchema,
     greeting: z.string().trim().max(500).optional(),
-    deliveryMethod: z.enum(["pickup", "delivery"]).default("pickup"),
-    deliveryAddress: z.string().trim().min(5).max(200).optional(),
+    // pickup from the shop only (delivery was removed)
+    deliveryMethod: z.literal("pickup").default("pickup"),
   })
-  .refine((v) => v.deliveryMethod === "pickup" || !!v.deliveryAddress, {
-    message: "deliveryAddress is required for delivery",
-    path: ["deliveryAddress"],
-  });
+  .strict();
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 // ---------- shops ----------

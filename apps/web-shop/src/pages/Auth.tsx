@@ -110,7 +110,7 @@ export function LoginPage({ role = "shop" as "shop" | "admin" }) {
 
 export function SignupPage() {
   const nav = useNavigate();
-  const [f, setF] = useState({ name: "", businessId: "", address: "", city: "", phone: "", contactName: "", email: "", password: "", logoUrl: "", pickupInfo: "", offersDelivery: false });
+  const [f, setF] = useState({ name: "", businessId: "", address: "", city: "", phone: "", contactName: "", email: "", password: "", logoUrl: "", pickupInfo: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
@@ -140,7 +140,6 @@ export function SignupPage() {
         <Field label="סיסמה" hint="לפחות 8 תווים, אותיות ומספרים"><PasswordInput value={f.password} onChange={(v) => setF({ ...f, password: v })} autoComplete="new-password" /></Field>
         <Field label="קישור ללוגו (לא חובה)"><input className={inputClass} dir="ltr" type="url" value={f.logoUrl} onChange={set("logoUrl")} /></Field>
         <Field label="שעות איסוף (לא חובה)"><input className={inputClass} value={f.pickupInfo} onChange={set("pickupInfo")} placeholder="א׳–ה׳ 10:00–19:00" /></Field>
-        <label className="flex items-center gap-2 font-bold sm:col-span-2"><input type="checkbox" checked={f.offersDelivery} onChange={set("offersDelivery")} /> החנות מציעה משלוחים</label>
         {error && <p role="alert" className="font-bold text-danger sm:col-span-2">{error}</p>}
         <Button type="submit" disabled={busy} className="sm:col-span-2">{busy ? "…" : "להרשמה"}</Button>
         <p className="text-sm text-ink-soft sm:col-span-2">אחרי ההרשמה נבדוק ונאשר את החנות. עד אז המוצרים לא יוצגו לילדים. <Link to="/login" className="font-bold text-sky-deep">כבר רשומים?</Link></p>

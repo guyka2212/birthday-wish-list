@@ -321,7 +321,7 @@ function CartDrawer({
   const soonest = cart.length ? Math.min(...cart.map((c) => c.heldUntil ?? Infinity)) : null;
   const countdown = useCountdown(soonest && Number.isFinite(soonest) ? soonest : null);
   const total = cart.reduce((s, i) => s + i.product.priceAgorot, 0);
-  const [form, setForm] = useState({ buyerName: "", buyerEmail: "", greeting: "", deliveryMethod: "pickup" as "pickup" | "delivery", deliveryAddress: "" });
+  const [form, setForm] = useState({ buyerName: "", buyerEmail: "", greeting: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paying, setPaying] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -341,7 +341,6 @@ function CartDrawer({
     const errs: Record<string, string> = {};
     if (form.buyerName.trim().length < 2) errs.buyerName = t.required;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.buyerEmail.trim())) errs.buyerEmail = t.invalidEmail;
-    if (form.deliveryMethod === "delivery" && form.deliveryAddress.trim().length < 5) errs.deliveryAddress = t.required;
     setErrors(errs);
     if (Object.keys(errs).length || !cart.length) return;
     setPaying(true);
@@ -354,8 +353,7 @@ function CartDrawer({
         buyerName: form.buyerName.trim(),
         buyerEmail: form.buyerEmail.trim(),
         greeting: form.greeting.trim() || undefined,
-        deliveryMethod: form.deliveryMethod,
-        deliveryAddress: form.deliveryMethod === "delivery" ? form.deliveryAddress.trim() : undefined,
+        deliveryMethod: "pickup",
       });
       navigate(r.billPath, { state: { justPaid: true } });
     } catch (e) {
@@ -423,20 +421,7 @@ function CartDrawer({
               <Field label={t.greeting}>
                 <textarea className={`${inputClass} min-h-24`} placeholder={t.greetingPh} value={form.greeting} maxLength={500} onChange={(e) => setForm({ ...form, greeting: e.target.value })} />
               </Field>
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-1 font-bold">{t.delivery}</legend>
-                {(["pickup", "delivery"] as const).map((m) => (
-                  <label key={m} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 ${form.deliveryMethod === m ? "border-t-primary bg-sky-soft" : "border-black/10"}`}>
-                    <input type="radio" name="delivery" checked={form.deliveryMethod === m} onChange={() => setForm({ ...form, deliveryMethod: m })} />
-                    {m === "pickup" ? `🏪 ${t.pickup}` : `🚚 ${t.shipping}`}
-                  </label>
-                ))}
-              </fieldset>
-              {form.deliveryMethod === "delivery" && (
-                <Field label={t.address} error={errors.deliveryAddress}>
-                  <input className={inputClass} autoComplete="street-address" value={form.deliveryAddress} maxLength={200} onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })} />
-                </Field>
-              )}
+              <p className="flex min-h-12 items-center gap-3 rounded-2xl border-2 border-t-primary bg-sky-soft px-4 font-bold">🏪 {t.pickup}</p>
               <p className="rounded-2xl bg-sun/25 px-4 py-3 text-sm font-bold">🏪 {t.requestNote}</p>
               <p className="rounded-2xl bg-mint/15 px-4 py-3 text-sm font-bold">💳 {t.mockPayment}</p>
               {serverError && (

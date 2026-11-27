@@ -296,7 +296,7 @@ pub.post("/checkout", async (c) => {
           await box.encrypt(input.buyerEmail),
           input.greeting || null,
           input.deliveryMethod,
-          input.deliveryMethod === "delivery" ? await box.encrypt(input.deliveryAddress!) : null,
+          null, // pickup only — no delivery address is collected
           subtotal,
           vat,
           total,

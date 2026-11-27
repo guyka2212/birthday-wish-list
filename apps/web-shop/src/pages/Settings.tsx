@@ -172,7 +172,7 @@ export function SettingsPage() {
   if (me.loading) return <Loading />;
   if (me.error || !me.data) return <ErrorBox error={me.error} onRetry={me.reload} />;
   const s = me.data;
-  const v = f ?? { name: s.name, address: s.address, city: s.city, phone: s.phone, contactName: s.contactName, logoUrl: s.logoUrl ?? "", pickupInfo: s.pickupInfo ?? "", offersDelivery: s.offersDelivery };
+  const v = f ?? { name: s.name, address: s.address, city: s.city, phone: s.phone, contactName: s.contactName, logoUrl: s.logoUrl ?? "", pickupInfo: s.pickupInfo ?? "" };
   const field = (k: string, label: string, ltr = false) => (
     <Field label={label}>
       <input className={inputClass} dir={ltr ? "ltr" : undefined} value={String(v[k] ?? "")} onChange={(e) => setF({ ...v, [k]: e.target.value })} />
@@ -205,7 +205,6 @@ export function SettingsPage() {
         {field("phone", "טלפון", true)}
         {field("logoUrl", "קישור ללוגו", true)}
         {field("pickupInfo", "שעות איסוף")}
-        <label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={!!v.offersDelivery} onChange={(e) => setF({ ...v, offersDelivery: e.target.checked })} /> משלוחים</label>
       </div>
       {err && <p role="alert" className="font-bold text-danger">{err}</p>}
       {msg && <p className="font-bold text-mint">{msg}</p>}

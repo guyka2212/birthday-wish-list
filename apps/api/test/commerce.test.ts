@@ -100,7 +100,7 @@ describe("reservations and checkout", () => {
     expect(late.json.error.code).toBe("reservation_invalid");
   });
 
-  it("won't reserve out-of-stock items and requires an address for delivery", async () => {
+  it("won't reserve out-of-stock items and only allows pickup", async () => {
     const ctx = await setup();
     const { productIds } = await seedShop(ctx);
     const { slug } = await sharedList(ctx, [productIds.GONE!, productIds.BALL!]);
@@ -111,8 +111,9 @@ describe("reservations and checkout", () => {
     const g = guestSession();
     const ball = items.find((i: any) => i.product.inStock);
     const hold = (await ctx.call("POST", "/public/reservations", { slug, listItemId: ball.id, guestSession: g })).json.id;
-    const noAddr = await ctx.call("POST", "/public/checkout", { slug, guestSession: g, reservationIds: [hold], ...buyer, deliveryMethod: "delivery" });
-    expect(noAddr.status).toBe(400);
+    // delivery was removed: pickup only
+    const delivery = await ctx.call("POST", "/public/checkout", { slug, guestSession: g, reservationIds: [hold], ...buyer, deliveryMethod: "delivery", deliveryAddress: "Herzl 1, Haifa" });
+    expect(delivery.status).toBe(400);
   });
 
   it("sends a signed order.created webhook to the shop", async () => {
