@@ -81,7 +81,8 @@ fun AuthScreen(repo: Repository, language: String, session: SessionViewModel, on
     var birthday by rememberSaveable { mutableStateOf("") }
     var city by rememberSaveable { mutableStateOf("") }
     var avatar by rememberSaveable { mutableStateOf(Avatars.first()) }
-    var photo by remember { mutableStateOf<ByteArray?>(null) }
+    // saveable: opening the camera/gallery can recreate the activity, which would otherwise drop the picked photo
+    var photo by rememberSaveable { mutableStateOf<ByteArray?>(null) }
     val platform = LocalPlatform.current
     val scope = rememberCoroutineScope()
     // after sign-up: save the photo (if one was chosen), then enter the app

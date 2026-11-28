@@ -33,11 +33,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun deliverPhoto(produce: () -> ByteArray?) {
-        val cb = photoCallback ?: return
+        val cb = photoCallback
         photoCallback = null
         lifecycleScope.launch {
             val bytes = withContext(Dispatchers.Default) { runCatching(produce).getOrNull() }
-            cb(bytes)
+            // no callback = this screen was recreated while the camera/gallery was open: park the photo for the picker
+            if (cb != null) cb(bytes) else if (bytes != null) pendingPhoto = bytes
         }
     }
 
@@ -85,6 +86,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            override fun takePendingPhoto(): ByteArray? = pendingPhoto.also { pendingPhoto = null }
+
             override fun markActivitySeen(createdAt: Long) {
                 if (createdAt > app.prefs.getLong(GiftWorker.KEY_SEEN, 0)) app.prefs.edit().putLong(GiftWorker.KEY_SEEN, createdAt).apply()
             }
@@ -97,5 +100,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_LIST_ID = "listId"
+
+        /** survives screen recreation (same process); see PlatformActions.takePendingPhoto */
+        @Volatile private var pendingPhoto: ByteArray? = null
     }
 }

@@ -157,7 +157,6 @@ export default function ShopPage() {
           <p className="text-xl font-bold opacity-95">{list.listName}</p>
           {list.description && <p className="max-w-2xl text-lg opacity-90">{list.description}</p>}
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-t-accent px-4 py-1.5 font-bold text-t-on-accent">{lang === "he" ? theme.taglineHe : theme.taglineEn}</span>
             {list.daysToBirthday != null && <span className="rounded-full bg-white/20 px-4 py-1.5 font-bold">🎂 {t.daysLeft(list.daysToBirthday)}</span>}
           </div>
         </div>

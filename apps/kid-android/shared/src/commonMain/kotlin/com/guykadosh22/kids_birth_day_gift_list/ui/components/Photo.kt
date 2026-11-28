@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -59,6 +60,9 @@ fun PhotoPicker(photoBytes: ByteArray?, emoji: String, onPicked: (ByteArray) -> 
     val s = LocalStrings.current
     val platform = LocalPlatform.current
     val photo = rememberImage(photoBytes)
+    // pick up a photo whose callback was lost because the screen was recreated while the camera was open
+    val latestOnPicked by androidx.compose.runtime.rememberUpdatedState(onPicked)
+    androidx.compose.runtime.LaunchedEffect(Unit) { platform.takePendingPhoto()?.let { latestOnPicked(it) } }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.s)) {
         Box(contentAlignment = Alignment.BottomEnd) {
             ProfilePhoto(photo, emoji, size, ring = BwlColors.Sky)

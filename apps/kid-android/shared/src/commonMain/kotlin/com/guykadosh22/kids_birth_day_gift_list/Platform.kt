@@ -18,6 +18,12 @@ interface PlatformActions {
      * Calls back with a small square JPEG (already resized), or null if cancelled.
      */
     fun pickPhoto(fromCamera: Boolean, onResult: (ByteArray?) -> Unit) = onResult(null)
+
+    /**
+     * A photo that came back after Android recreated the screen while the camera/gallery was open
+     * (the original callback was lost with the old screen). Returns it once, then null.
+     */
+    fun takePendingPhoto(): ByteArray? = null
 }
 
 object NoopPlatform : PlatformActions {
